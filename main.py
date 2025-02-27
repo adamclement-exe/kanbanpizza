@@ -3,6 +3,8 @@ import threading
 import uuid
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -14,22 +16,25 @@ group_games = {}
 player_group = {}
 
 def new_game_state():
-    return {
-        "players": {},               # key: sid, value: {room}
-        "prepared_ingredients": [],  # list of ingredient objects {id, type, prepared_by}
-        "built_pizzas": [],          # pizzas assembled but not yet in the oven
-        "oven": [],                  # pizzas currently in the oven
-        "completed_pizzas": [],      # pizzas that are cooked correctly
-        "wasted_pizzas": [],         # pizzas that are undercooked or burnt
+    state = {
+        "players": {},
+        "prepared_ingredients": [],
+        "built_pizzas": [],
+        "oven": [],
+        "completed_pizzas": [],
+        "wasted_pizzas": [],
         "round": 1,
-        "max_rounds": 1,             # only Round 1 for now
-        "current_phase": "waiting",  # waiting, round, debrief, finished
+        "max_rounds": 1,
+        "current_phase": "waiting",
         "max_pizzas_in_oven": 3,
-        "round_duration": 420,
+        "round_duration": 420,  # Your desired value
         "oven_on": False,
         "oven_timer_start": None,
         "round_start_time": None
     }
+    logging.debug(f"New game state created with round_duration: {state['round_duration']}")
+    return state
+
 
 @app.route('/')
 def index():
@@ -207,10 +212,12 @@ def toggle_oven(data):
 def on_start_round(data):
     room = player_group.get(request.sid, "default")
     game_state = group_games.get(room, new_game_state())
+    logging.debug(f"Room {room} on_start_round: current round_duration = {game_state['round_duration']}")
     if game_state["current_phase"] != "waiting":
         return
     game_state["current_phase"] = "round"
     game_state["round_start_time"] = time.time()
+    logging.debug(f"Round started at {game_state['round_start_time']} with duration {game_state['round_duration']}")
     # Clear previous round state
     game_state["prepared_ingredients"] = []
     game_state["built_pizzas"] = []
