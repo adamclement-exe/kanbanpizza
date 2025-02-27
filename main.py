@@ -113,24 +113,38 @@ def on_build_pizza(data):
     if not builder_ingredients:
         emit('build_error', {"message": "No ingredients provided."}, room=request.sid)
         return
+
     counts = {"base": 0, "sauce": 0, "ham": 0, "pineapple": 0}
     for ing in builder_ingredients:
         counts[ing.get("type", "")] += 1
+
     valid = False
     if counts["base"] == 1 and counts["sauce"] == 1:
         if counts["ham"] == 4 and counts["pineapple"] == 0:
             valid = True
         elif counts["ham"] == 2 and counts["pineapple"] == 2:
             valid = True
+
     if not valid:
-        emit('build_error',
-             {"message": "Invalid combination: 1 base, 1 sauce and either 4 ham OR 2 ham and 2 pineapple required."},
-             room=request.sid)
+        # Instead of rejecting the pizza outright, add it to wasted pizzas as "incomplete"
+        pizza_id = str(uuid.uuid4())[:8]
+        pizza = {
+            "pizza_id": pizza_id,
+            "team": room,  # Using room as the team identifier in your simplified version
+            "built_at": time.time(),
+            "baking_time": 0,
+            "status": "incomplete"
+        }
+        game_state["wasted_pizzas"].append(pizza)
+        socketio.emit('build_error', {"message": "Invalid combination: Pizza added as incomplete."}, room=request.sid)
+        socketio.emit('game_state', game_state, room=room)
         return
+
+    # Valid pizza: proceed as usual
     pizza_id = str(uuid.uuid4())[:8]
     pizza = {
         "pizza_id": pizza_id,
-        "team": room,  # use room as the team identifier
+        "team": room,
         "built_at": time.time(),
         "baking_time": 0
     }
