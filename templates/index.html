@@ -94,6 +94,7 @@
 
   <script>
     var socket = io();
+    var myGroup = "";
     var myTeam = "";
     var builderIngredients = [];
     var roundEndTime = null;
@@ -166,9 +167,9 @@
       document.getElementById("oven-timer").innerText = "Oven Time: 0 sec";
     }
     socket.on('connect', function() {
-      var username = prompt("Enter your username:");
-      myTeam = prompt("Enter your team name (or leave blank to use your username):") || username;
-      socket.emit('join', { username: username, team: myTeam });
+      myTeam = prompt("Enter your username:");
+      myGroup = prompt("Enter your group (or room) name:") || "default";
+      socket.emit('join', { username: myTeam, group: myGroup });
     });
     socket.on('game_state', function(state) {
       if (state.current_phase === "round") {
@@ -182,7 +183,6 @@
         document.getElementById("game-area").style.display = "none";
         document.getElementById("timer").innerText = "Round Time remaining: --";
       }
-      // Update the prepared ingredients pool
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
       state.prepared_ingredients.forEach(function(item) {
@@ -194,7 +194,6 @@
         div.addEventListener("dragstart", drag);
         poolDiv.appendChild(div);
       });
-      // Update built pizzas
       var builtDiv = document.getElementById("built-pizzas");
       builtDiv.innerHTML = "";
       state.built_pizzas.forEach(function(pizza) {
@@ -209,7 +208,6 @@
         div.appendChild(btn);
         builtDiv.appendChild(div);
       });
-      // Update oven display
       var ovenDiv = document.getElementById("oven");
       ovenDiv.innerHTML = "";
       state.oven.forEach(function(pizza) {
@@ -218,7 +216,6 @@
         div.innerText = "Pizza " + pizza.pizza_id + " (baking)";
         ovenDiv.appendChild(div);
       });
-      // Update completed pizzas
       var compDiv = document.getElementById("completed");
       compDiv.innerHTML = "";
       state.completed_pizzas.forEach(function(pizza) {
@@ -227,7 +224,6 @@
         div.innerText = "Pizza " + pizza.pizza_id + " completed (team " + pizza.team + ")";
         compDiv.appendChild(div);
       });
-      // Update wasted pizzas
       var wastedDiv = document.getElementById("wasted");
       wastedDiv.innerHTML = "";
       state.wasted_pizzas.forEach(function(pizza) {
