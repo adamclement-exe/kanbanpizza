@@ -223,7 +223,7 @@ def end_round():
         "wasted_pizzas_count": len(game_state["wasted_pizzas"])
     }
     socketio.emit('round_ended', result, room="game")
-    threading.Thread(target=debrief_timer, args=(60,)).start()
+    threading.Thread(target=debrief_timer, args=(1,)).start()
 
 def debrief_timer(duration):
     time.sleep(duration)
