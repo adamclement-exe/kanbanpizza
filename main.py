@@ -25,7 +25,7 @@ def new_game_state():
         "max_rounds": 1,             # only Round 1 for now
         "current_phase": "waiting",  # waiting, round, debrief, finished
         "max_pizzas_in_oven": 3,
-        "round_duration": 300,       # 5 minutes per round
+        "round_duration": 420,       
         "oven_on": False,
         "oven_timer_start": None,
         "round_start_time": None
