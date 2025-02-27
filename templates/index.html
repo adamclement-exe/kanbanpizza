@@ -186,6 +186,11 @@
       socket.emit('join', { username: username, team: myTeam });
     });
     socket.on('game_state', function(state) {
+      if (state.current_phase === "round" && state.round_start_time) {
+        var elapsed = Math.floor((Date.now() / 1000) - state.round_start_time);
+        var remaining = Math.max(0, state.duration - elapsed);
+        startRoundTimer(remaining);
+      }
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
       }
