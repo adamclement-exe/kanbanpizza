@@ -244,6 +244,7 @@ def on_start_round(data):
     if game_state["current_phase"] != "waiting":
         return
     game_state["current_phase"] = "round"
+    game_state["round_start_time"] = time.time()  # Record when the round starts
     # Clear previous round state
     game_state["prepared_ingredients"] = []
     game_state["built_pizzas"] = []
@@ -252,9 +253,13 @@ def on_start_round(data):
     game_state["wasted_pizzas"] = []
     game_state["oven_on"] = False
     game_state["oven_timer_start"] = None
-    socketio.emit('round_started', {"round": game_state["round"], "duration": game_state["round_duration"]},
-                  room="game")
+    socketio.emit('round_started', {
+        "round": game_state["round"],
+        "duration": game_state["round_duration"],
+        "start_time": game_state["round_start_time"]
+    }, room="game")
     threading.Thread(target=round_timer, args=(game_state["round_duration"],)).start()
+
 
 
 def round_timer(duration):
@@ -274,8 +279,16 @@ def end_round():
 
 def debrief_timer(duration):
     time.sleep(duration)
-    game_state["current_phase"] = "finished"
-    socketio.emit('game_over', game_state, room="game")
+    # Reset state for a new round
+    game_state["current_phase"] = "waiting"
+    game_state["prepared_ingredients"] = []
+    game_state["built_pizzas"] = []
+    game_state["oven"] = []
+    game_state["completed_pizzas"] = []
+    game_state["wasted_pizzas"] = []
+    game_state["oven_on"] = False
+    game_state["oven_timer_start"] = None
+    socketio.emit('game_reset', game_state, room="game")
 
 
 if __name__ == '__main__':
