@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Kanban Pizza Game - Round 1</title>
+  <title>Kanban Pizza Game</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; }
@@ -12,55 +12,33 @@
       margin: 5px;
       cursor: grab;
     }
-    .prepared-ham {
-      width: 50px;
-      height: 50px;
-      background-color: pink;
-      border: 1px solid #ff69b4;
-    }
-    .prepared-sauce {
-      width: 0;
-      height: 0;
-      border-left: 25px solid transparent;
-      border-right: 25px solid transparent;
-      border-bottom: 50px solid red;
-    }
-    .prepared-pineapple {
-      width: 0;
-      height: 0;
-      border-left: 25px solid transparent;
-      border-right: 25px solid transparent;
-      border-bottom: 50px solid yellow;
-    }
-    .prepared-base {
-      width: 0;
-      height: 0;
-      border-left: 25px solid transparent;
-      border-right: 25px solid transparent;
-      border-bottom: 50px solid #f5deb3;
-    }
-    .builder-item {
-      display: inline-block;
-      margin: 5px;
-    }
+    .prepared-ham { width: 50px; height: 50px; background-color: pink; border: 1px solid #ff69b4; }
+    .prepared-sauce { width: 0; height: 0; border-left: 25px solid transparent; border-right: 25px solid transparent; border-bottom: 50px solid red; }
+    .prepared-pineapple { width: 0; height: 0; border-left: 25px solid transparent; border-right: 25px solid transparent; border-bottom: 50px solid yellow; }
+    .prepared-base { width: 0; height: 0; border-left: 25px solid transparent; border-right: 25px solid transparent; border-bottom: 50px solid #f5deb3; }
+    .builder-item { display: inline-block; margin: 5px; }
     #pizza-builder { border: 2px dashed #666; min-height: 100px; padding: 10px; margin: 10px; }
     #built-pizzas, #oven, #completed, #wasted { border: 1px solid #ccc; min-height: 50px; padding: 10px; margin: 10px; }
     .pizza-item { border: 1px solid #333; margin: 5px; padding: 5px; }
     #timer, #oven-timer { font-size: 24px; margin: 10px; }
     #messages { color: red; margin: 10px; }
+    /* Modal styles */
+    .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover, .close:focus { color: black; }
   </style>
 </head>
 <body>
-  <h1>Kanban Pizza Game - Round 1</h1>
+  <h1>Kanban Pizza Game</h1>
   <div id="game-controls">
     <button id="start-round">Start Round</button>
     <button id="oven-on">Turn Oven On</button>
     <button id="oven-off">Turn Oven Off</button>
+    <button id="instructions-btn">Instructions</button>
   </div>
-
   <div id="timer">Round Time remaining: --</div>
   <div id="oven-timer">Oven Time: --</div>
-
   <div id="game-area" style="display: none;">
     <h2>Prepare Ingredients</h2>
     <div id="prepare-buttons">
@@ -69,33 +47,65 @@
       <button onclick="prepareIngredient('ham')">Chop Ham</button>
       <button onclick="prepareIngredient('pineapple')">Chop Pineapple</button>
     </div>
-
     <h3>Shared Prepared Ingredients Pool</h3>
     <div id="prepared-pool" ondrop="dropFromPool(event)" ondragover="allowDrop(event)"></div>
-
     <h3>Your Pizza Builder</h3>
     <div id="pizza-builder" ondrop="dropToBuilder(event)" ondragover="allowDrop(event)"></div>
     <button id="submit-pizza">Submit Pizza</button>
-
     <h3>Built Pizzas (Not yet in oven)</h3>
     <div id="built-pizzas"></div>
-
     <h3>Oven (Max 3 pizzas)</h3>
     <div id="oven"></div>
-
     <h3>Completed Pizzas</h3>
     <div id="completed"></div>
-
     <h3>Wasted Pizzas</h3>
     <div id="wasted"></div>
-
     <div id="messages"></div>
   </div>
-
+  <!-- Modal for instructions -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="modal-close">&times;</span>
+      <h2>How to Play</h2>
+      <p>
+        <strong>Objective:</strong> Build and bake pizzas to score points.<br>
+        <strong>Scoring:</strong><br>
+        +10 points for each fully cooked pizza slice<br>
+        -10 points for each wasted pizza<br>
+        -1 point for each leftover ingredient
+      </p>
+      <p>
+        <strong>Pizza Building:</strong><br>
+        To build a valid pizza, you must use:
+        <ul>
+          <li>1 Base (Dough)</li>
+          <li>1 Sauce</li>
+          <li>Either 4 Ham pieces <em>or</em> 2 Ham pieces and 2 Pineapple pieces</li>
+        </ul>
+        Drag the prepared ingredients into your pizza builder and submit your pizza.
+      </p>
+      <p>
+        <strong>Cooking Instructions:</strong><br>
+        <ul>
+          <li>If a pizza cooks for less than 30 seconds, it is undercooked and will be wasted.</li>
+          <li>If it cooks between 30 and 45 seconds, it is perfectly cooked and will score points.</li>
+          <li>If it cooks for more than 45 seconds, it will be burnt and wasted.</li>
+        </ul>
+        To cook your pizza, first move it to the oven (when the oven is off). Then, turn the oven on to start cooking. Finally, turn the oven off to stop cooking.
+      </p>
+      <p>
+        <strong>Gameplay:</strong><br>
+        1. Click "Start Round" to begin.<br>
+        2. Prepare ingredients using the buttons.<br>
+        3. Drag ingredients into your pizza builder and submit your pizza.<br>
+        4. Move built pizzas to the oven and control the oven (turn on/off) to cook pizzas correctly.<br>
+        5. When the round ends, you'll see an alert: "Your team scored:" followed by your room's score.
+      </p>
+    </div>
+  </div>
   <script>
     var socket = io();
-    var myGroup = "";
-    var myTeam = "";
+    var myRoom = "";
     var builderIngredients = [];
     var roundEndTime = null;
     var timerInterval = null;
@@ -103,16 +113,21 @@
     var ovenTimerStart = null;
     var ovenTimerInterval = null;
 
-    function allowDrop(ev) {
-      ev.preventDefault();
-    }
+    // Modal functionality
+    var modal = document.getElementById("modal");
+    var instructionsBtn = document.getElementById("instructions-btn");
+    var closeModal = document.getElementById("modal-close");
+
+    instructionsBtn.onclick = function() { modal.style.display = "block"; }
+    closeModal.onclick = function() { modal.style.display = "none"; }
+    window.onclick = function(event) { if (event.target == modal) { modal.style.display = "none"; } }
+
+    function allowDrop(ev) { ev.preventDefault(); }
     function drag(ev) {
       ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
       ev.dataTransfer.setData("ingredient_type", ev.target.dataset.type);
     }
-    function dropFromPool(ev) {
-      ev.preventDefault();
-    }
+    function dropFromPool(ev) { ev.preventDefault(); }
     function dropToBuilder(ev) {
       ev.preventDefault();
       var ingredient_id = ev.dataTransfer.getData("ingredient_id");
@@ -131,14 +146,9 @@
         builderDiv.appendChild(item);
       });
     }
-    function prepareIngredient(type) {
-      socket.emit('prepare_ingredient', { ingredient_type: type });
-    }
+    function prepareIngredient(type) { socket.emit('prepare_ingredient', { ingredient_type: type }); }
     document.getElementById("submit-pizza").addEventListener("click", function() {
-      if (builderIngredients.length === 0) {
-        alert("No ingredients selected for pizza!");
-        return;
-      }
+      if (builderIngredients.length === 0) { alert("No ingredients selected for pizza!"); return; }
       socket.emit('build_pizza', { ingredients: builderIngredients });
       builderIngredients = [];
       updateBuilderDisplay();
@@ -149,9 +159,7 @@
       timerInterval = setInterval(function() {
         var remaining = Math.max(0, Math.floor((roundEndTime - Date.now()) / 1000));
         document.getElementById("timer").innerText = "Round Time remaining: " + remaining + " sec";
-        if (remaining <= 0) {
-          clearInterval(timerInterval);
-        }
+        if (remaining <= 0) { clearInterval(timerInterval); }
       }, 1000);
     }
     function startOvenTimer() {
@@ -167,13 +175,13 @@
       document.getElementById("oven-timer").innerText = "Oven Time: 0 sec";
     }
     socket.on('connect', function() {
-      myTeam = prompt("Enter your username:");
-      myGroup = prompt("Enter your group (or room) name:") || "default";
-      socket.emit('join', { username: myTeam, group: myGroup });
+      myRoom = prompt("Enter your room number:") || "default";
+      socket.emit('join', { room: myRoom });
     });
     socket.on('game_state', function(state) {
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
+        document.getElementById("start-round").style.display = "none";
         if (state.round_start_time && state.round_duration) {
           var elapsed = Math.floor(Date.now() / 1000 - state.round_start_time);
           var remaining = Math.max(0, state.round_duration - elapsed);
@@ -182,6 +190,7 @@
       } else if (state.current_phase === "waiting") {
         document.getElementById("game-area").style.display = "none";
         document.getElementById("timer").innerText = "Round Time remaining: --";
+        document.getElementById("start-round").style.display = "inline-block";
       }
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
@@ -199,12 +208,10 @@
       state.built_pizzas.forEach(function(pizza) {
         var div = document.createElement("div");
         div.className = "pizza-item";
-        div.innerText = "Pizza " + pizza.pizza_id + " from team " + pizza.team;
+        div.innerText = "Pizza " + pizza.pizza_id;
         var btn = document.createElement("button");
         btn.innerText = "Move to Oven";
-        btn.onclick = function() {
-          socket.emit('move_to_oven', { pizza_id: pizza.pizza_id });
-        };
+        btn.onclick = function() { socket.emit('move_to_oven', { pizza_id: pizza.pizza_id }); };
         div.appendChild(btn);
         builtDiv.appendChild(div);
       });
@@ -221,7 +228,7 @@
       state.completed_pizzas.forEach(function(pizza) {
         var div = document.createElement("div");
         div.className = "pizza-item";
-        div.innerText = "Pizza " + pizza.pizza_id + " completed (team " + pizza.team + ")";
+        div.innerText = "Pizza " + pizza.pizza_id + " completed";
         compDiv.appendChild(div);
       });
       var wastedDiv = document.getElementById("wasted");
@@ -229,43 +236,34 @@
       state.wasted_pizzas.forEach(function(pizza) {
         var div = document.createElement("div");
         div.className = "pizza-item";
-        div.innerText = "Pizza " + pizza.pizza_id + " " + pizza.status + " (team " + pizza.team + ")";
+        div.innerText = "Pizza " + pizza.pizza_id + " " + pizza.status;
         wastedDiv.appendChild(div);
       });
     });
     socket.on('round_started', function(data) {
       document.getElementById("messages").innerText = "Round " + data.round + " started. Duration: " + data.duration + " sec";
       document.getElementById("game-area").style.display = "block";
+      document.getElementById("start-round").style.display = "none";
       if (data.start_time && data.duration) {
         var elapsed = Math.floor(Date.now() / 1000 - data.start_time);
         var remaining = Math.max(0, data.duration - elapsed);
         startRoundTimer(remaining);
-      } else {
-        startRoundTimer(data.duration);
-      }
+      } else { startRoundTimer(data.duration); }
     });
     socket.on('round_ended', function(result) {
-      alert("Round ended! Completed pizzas: " + result.completed_pizzas_count + ", Wasted pizzas: " + result.wasted_pizzas_count);
+      var msg = "Round ended!\nYour team scored: " + result.score;
+      alert(msg);
     });
     socket.on('game_reset', function(state) {
       document.getElementById("messages").innerText = "Round reset. Ready for a new round.";
       document.getElementById("timer").innerText = "Round Time remaining: --";
+      document.getElementById("start-round").style.display = "inline-block";
     });
-    socket.on('ingredient_prepared', function(item) {
-      document.getElementById("messages").innerText = "Ingredient prepared: " + item.type;
-    });
-    socket.on('build_error', function(data) {
-      document.getElementById("messages").innerText = "Build Error: " + data.message;
-    });
-    socket.on('pizza_built', function(pizza) {
-      document.getElementById("messages").innerText = "Pizza built: " + pizza.pizza_id;
-    });
-    socket.on('oven_error', function(data) {
-      document.getElementById("messages").innerText = "Oven Error: " + data.message;
-    });
-    socket.on('pizza_moved_to_oven', function(pizza) {
-      document.getElementById("messages").innerText = "Pizza moved to oven: " + pizza.pizza_id;
-    });
+    socket.on('ingredient_prepared', function(item) { document.getElementById("messages").innerText = "Ingredient prepared: " + item.type; });
+    socket.on('build_error', function(data) { document.getElementById("messages").innerText = "Build Error: " + data.message; });
+    socket.on('pizza_built', function(pizza) { document.getElementById("messages").innerText = "Pizza built: " + pizza.pizza_id; });
+    socket.on('oven_error', function(data) { document.getElementById("messages").innerText = "Oven Error: " + data.message; });
+    socket.on('pizza_moved_to_oven', function(pizza) { document.getElementById("messages").innerText = "Pizza moved to oven: " + pizza.pizza_id; });
     socket.on('oven_toggled', function(data) {
       if (data.state === "on") {
         ovenOn = true;
@@ -277,18 +275,10 @@
         document.getElementById("messages").innerText = "Oven turned OFF.";
       }
     });
-    document.getElementById("oven-on").addEventListener("click", function() {
-      socket.emit('toggle_oven', { state: "on" });
-    });
-    document.getElementById("oven-off").addEventListener("click", function() {
-      socket.emit('toggle_oven', { state: "off" });
-    });
-    document.getElementById("start-round").addEventListener("click", function() {
-      socket.emit('start_round', {});
-    });
-    window.addEventListener("beforeunload", function () {
-      socket.disconnect();
-    });
+    document.getElementById("oven-on").addEventListener("click", function() { socket.emit('toggle_oven', { state: "on" }); });
+    document.getElementById("oven-off").addEventListener("click", function() { socket.emit('toggle_oven', { state: "off" }); });
+    document.getElementById("start-round").addEventListener("click", function() { socket.emit('start_round', {}); });
+    window.addEventListener("beforeunload", function () { socket.disconnect(); });
   </script>
 </body>
 </html>
