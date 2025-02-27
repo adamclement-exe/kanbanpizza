@@ -25,7 +25,7 @@ def new_game_state():
         "max_rounds": 1,             # only Round 1 for now
         "current_phase": "waiting",  # waiting, round, debrief, finished
         "max_pizzas_in_oven": 3,
-        "round_duration": 420,       
+        "round_duration": 420,
         "oven_on": False,
         "oven_timer_start": None,
         "round_start_time": None
@@ -221,7 +221,7 @@ def on_start_round(data):
     game_state["oven_timer_start"] = None
     socketio.emit('round_started', {
         "round": game_state["round"],
-        "duration": game_state["round_duration"],
+        "duration": 400,
         "start_time": game_state["round_start_time"]
     }, room=room)
     threading.Thread(target=round_timer, args=(game_state["round_duration"], room)).start()
