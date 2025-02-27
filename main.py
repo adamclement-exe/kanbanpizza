@@ -9,23 +9,27 @@ app.config['SECRET_KEY'] = 'secret!'
 async_mode = None
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
 
-# Global game state
-game_state = {
-    "players": {},               # key: sid, value: {username, team}
-    "prepared_ingredients": [],  # list of ingredient objects {id, type, prepared_by}
-    "built_pizzas": [],          # pizzas assembled but not yet in the oven
-    "oven": [],                  # pizzas currently in the oven
-    "completed_pizzas": [],      # pizzas that are cooked correctly
-    "wasted_pizzas": [],         # pizzas that are undercooked or burnt
-    "round": 1,
-    "max_rounds": 1,             # only Round 1 for now
-    "current_phase": "waiting",  # waiting, round, debrief, finished
-    "max_pizzas_in_oven": 3,
-    "round_duration": 300,       # 5 minutes per round
-    "oven_on": False,            # oven state: on or off
-    "oven_timer_start": None,    # timestamp when oven was turned on
-    "round_start_time": None     # timestamp when the round starts
-}
+# Global dictionaries for group game states and mapping player session IDs to their group
+group_games = {}
+player_group = {}
+
+def new_game_state():
+    return {
+        "players": {},               # key: sid, value: {username, group}
+        "prepared_ingredients": [],  # list of ingredient objects {id, type, prepared_by}
+        "built_pizzas": [],          # pizzas assembled but not yet in the oven
+        "oven": [],                  # pizzas currently in the oven
+        "completed_pizzas": [],      # pizzas that are cooked correctly
+        "wasted_pizzas": [],         # pizzas that are undercooked or burnt
+        "round": 1,
+        "max_rounds": 1,             # only Round 1 for now
+        "current_phase": "waiting",  # waiting, round, debrief, finished
+        "max_pizzas_in_oven": 3,
+        "round_duration": 300,       # 5 minutes per round
+        "oven_on": False,
+        "oven_timer_start": None,
+        "round_start_time": None
+    }
 
 @app.route('/')
 def index():
@@ -34,45 +38,59 @@ def index():
 @socketio.on('connect')
 def on_connect():
     print("Client connected:", request.sid)
-    emit('game_state', game_state)
-
-@socketio.on('disconnect')
-def on_disconnect():
-    print("Client disconnected:", request.sid)
-    if request.sid in game_state["players"]:
-        del game_state["players"][request.sid]
-    socketio.emit('game_state', game_state, broadcast=True)
+    # Wait for join with group info before sending game state.
 
 @socketio.on('join')
 def on_join(data):
     username = data.get("username", f"Player_{request.sid[:5]}")
-    team = data.get("team", username)
-    game_state["players"][request.sid] = {"username": username, "team": team}
-    join_room("game")
-    socketio.emit('player_joined', {"sid": request.sid, "username": username, "team": team}, room="game")
-    socketio.emit('game_state', game_state, room="game")
-    print(f"{username} joined as team {team}")
+    group = data.get("group", "default")
+    # Create a new game state for the group if needed.
+    if group not in group_games:
+        group_games[group] = new_game_state()
+    game_state = group_games[group]
+    # Record which group this player belongs to.
+    player_group[request.sid] = group
+    game_state["players"][request.sid] = {"username": username, "group": group}
+    join_room(group)
+    socketio.emit('player_joined', {"sid": request.sid, "username": username, "group": group}, room=group)
+    socketio.emit('game_state', game_state, room=group)
+    print(f"{username} joined group {group}")
+
+@socketio.on('disconnect')
+def on_disconnect():
+    group = player_group.get(request.sid)
+    if group:
+        game_state = group_games.get(group)
+        if game_state and request.sid in game_state["players"]:
+            del game_state["players"][request.sid]
+        del player_group[request.sid]
+        socketio.emit('game_state', game_state, room=group)
+        print("Client disconnected:", request.sid)
 
 @socketio.on('prepare_ingredient')
 def on_prepare_ingredient(data):
+    group = player_group.get(request.sid, "default")
+    game_state = group_games.get(group, new_game_state())
     ingredient_type = data.get("ingredient_type")
     if ingredient_type not in ["base", "sauce", "ham", "pineapple"]:
         emit('error', {"message": "Invalid ingredient type"}, room=request.sid)
         return
     prepared_id = str(uuid.uuid4())[:8]
     player = game_state["players"].get(request.sid, {})
-    team = player.get("team", "unknown")
+    # We use the group name as the identifier for the preparer.
     prepared_item = {
         "id": prepared_id,
         "type": ingredient_type,
-        "prepared_by": team
+        "prepared_by": player.get("group", "unknown")
     }
     game_state["prepared_ingredients"].append(prepared_item)
-    socketio.emit('ingredient_prepared', prepared_item, room="game")
-    socketio.emit('game_state', game_state, room="game")
+    socketio.emit('ingredient_prepared', prepared_item, room=group)
+    socketio.emit('game_state', game_state, room=group)
 
 @socketio.on('take_ingredient')
 def on_take_ingredient(data):
+    group = player_group.get(request.sid, "default")
+    game_state = group_games.get(group, new_game_state())
     ingredient_id = data.get("ingredient_id")
     taken = None
     for ing in game_state["prepared_ingredients"]:
@@ -81,13 +99,15 @@ def on_take_ingredient(data):
             break
     if taken:
         game_state["prepared_ingredients"].remove(taken)
-        socketio.emit('ingredient_removed', {"ingredient_id": ingredient_id}, room="game")
-        socketio.emit('game_state', game_state, room="game")
+        socketio.emit('ingredient_removed', {"ingredient_id": ingredient_id}, room=group)
+        socketio.emit('game_state', game_state, room=group)
     else:
         emit('error', {"message": "Ingredient not available."}, room=request.sid)
 
 @socketio.on('build_pizza')
 def on_build_pizza(data):
+    group = player_group.get(request.sid, "default")
+    game_state = group_games.get(group, new_game_state())
     builder_ingredients = data.get("ingredients", [])
     if not builder_ingredients:
         emit('build_error', {"message": "No ingredients provided."}, room=request.sid)
@@ -112,19 +132,20 @@ def on_build_pizza(data):
 
     pizza_id = str(uuid.uuid4())[:8]
     player = game_state["players"].get(request.sid, {})
-    team = player.get("team", "unknown")
     pizza = {
         "pizza_id": pizza_id,
-        "team": team,
+        "team": player.get("group", "unknown"),
         "built_at": time.time(),
         "baking_time": 0
     }
     game_state["built_pizzas"].append(pizza)
-    socketio.emit('pizza_built', pizza, room="game")
-    socketio.emit('game_state', game_state, room="game")
+    socketio.emit('pizza_built', pizza, room=group)
+    socketio.emit('game_state', game_state, room=group)
 
 @socketio.on('move_to_oven')
 def on_move_to_oven(data):
+    group = player_group.get(request.sid, "default")
+    game_state = group_games.get(group, new_game_state())
     if game_state["oven_on"]:
         emit('oven_error', {"message": "Oven is on; cannot add pizzas."}, room=request.sid)
         return
@@ -146,11 +167,13 @@ def on_move_to_oven(data):
     pizza["oven_start"] = time.time()
     pizza["baking_time"] = 0
     game_state["oven"].append(pizza)
-    socketio.emit('pizza_moved_to_oven', pizza, room="game")
-    socketio.emit('game_state', game_state, room="game")
+    socketio.emit('pizza_moved_to_oven', pizza, room=group)
+    socketio.emit('game_state', game_state, room=group)
 
 @socketio.on('toggle_oven')
 def toggle_oven(data):
+    group = player_group.get(request.sid, "default")
+    game_state = group_games.get(group, new_game_state())
     desired_state = data.get("state")
     if desired_state == "on":
         if game_state["oven_on"]:
@@ -158,7 +181,7 @@ def toggle_oven(data):
             return
         game_state["oven_on"] = True
         game_state["oven_timer_start"] = time.time()
-        socketio.emit('oven_toggled', {"state": "on", "oven_timer": 0}, room="game")
+        socketio.emit('oven_toggled', {"state": "on", "oven_timer": 0}, room=group)
     elif desired_state == "off":
         if not game_state["oven_on"]:
             emit('oven_error', {"message": "Oven is already off."}, room=request.sid)
@@ -186,18 +209,20 @@ def toggle_oven(data):
                 game_state["oven"].remove(pizza)
         game_state["oven_on"] = False
         game_state["oven_timer_start"] = None
-        socketio.emit('oven_toggled', {"state": "off", "oven_timer": 0}, room="game")
-        socketio.emit('game_state', game_state, room="game")
+        socketio.emit('oven_toggled', {"state": "off", "oven_timer": 0}, room=group)
+        socketio.emit('game_state', game_state, room=group)
     else:
         emit('oven_error', {"message": "Invalid oven state requested."}, room=request.sid)
 
 @socketio.on('start_round')
 def on_start_round(data):
+    group = player_group.get(request.sid, "default")
+    game_state = group_games.get(group, new_game_state())
     if game_state["current_phase"] != "waiting":
         return
     game_state["current_phase"] = "round"
     game_state["round_start_time"] = time.time()
-    # Clear any previous round state
+    # Clear previous round state
     game_state["prepared_ingredients"] = []
     game_state["built_pizzas"] = []
     game_state["oven"] = []
@@ -209,25 +234,26 @@ def on_start_round(data):
         "round": game_state["round"],
         "duration": game_state["round_duration"],
         "start_time": game_state["round_start_time"]
-    }, room="game")
-    threading.Thread(target=round_timer, args=(game_state["round_duration"],)).start()
+    }, room=group)
+    threading.Thread(target=round_timer, args=(game_state["round_duration"], group)).start()
 
-def round_timer(duration):
+def round_timer(duration, group):
     time.sleep(duration)
-    end_round()
+    end_round(group)
 
-def end_round():
+def end_round(group):
+    game_state = group_games[group]
     game_state["current_phase"] = "debrief"
     result = {
         "completed_pizzas_count": len(game_state["completed_pizzas"]),
         "wasted_pizzas_count": len(game_state["wasted_pizzas"])
     }
-    socketio.emit('round_ended', result, room="game")
-    threading.Thread(target=debrief_timer, args=(1,)).start()
+    socketio.emit('round_ended', result, room=group)
+    threading.Thread(target=debrief_timer, args=(60, group)).start()
 
-def debrief_timer(duration):
+def debrief_timer(duration, group):
     time.sleep(duration)
-    # Reset state for a new round
+    game_state = group_games[group]
     game_state["current_phase"] = "waiting"
     game_state["prepared_ingredients"] = []
     game_state["built_pizzas"] = []
@@ -237,7 +263,7 @@ def debrief_timer(duration):
     game_state["oven_on"] = False
     game_state["oven_timer_start"] = None
     game_state["round_start_time"] = None
-    socketio.emit('game_reset', game_state, room="game")
+    socketio.emit('game_reset', game_state, room=group)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
