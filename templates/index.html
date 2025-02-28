@@ -178,10 +178,11 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body" id="debriefModalBody">
-          <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
-          <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
-          <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
-          <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
+        <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
+        <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
+        <p><strong>Unsold Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
+        <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
+        <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
           <hr>
           <p>
             <em class="text-muted">
@@ -410,10 +411,11 @@
     // REPLACED the simple alert with Debrief Modal
     socket.on('round_ended', function(result) {
       // Populate modal fields
-      document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
-      document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
-      document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
-      document.getElementById("debrief-score").innerText = result.score;
+        document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
+        document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
+        document.getElementById("debrief-pizzas-unsold").innerText = result.unsold_pizzas_count; // New unsold pizzas line
+        document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
+        document.getElementById("debrief-score").innerText = result.score;
 
       // Show the Debrief Modal
       var debriefModal = new bootstrap.Modal(document.getElementById('debriefModal'), {});
