@@ -27,14 +27,12 @@ def new_game_state():
         "max_rounds": 1,
         "current_phase": "waiting",
         "max_pizzas_in_oven": 3,
-        "round_duration": 420, 
+        "round_duration": 420,
         "oven_on": False,
         "oven_timer_start": None,
         "round_start_time": None
     }
-
     return state
-
 
 @app.route('/')
 def index():
@@ -78,7 +76,6 @@ def on_prepare_ingredient(data):
         emit('error', {"message": "Invalid ingredient type"}, room=request.sid)
         return
     prepared_id = str(uuid.uuid4())[:8]
-    # Use the room as the identifier for who prepared the ingredient.
     prepared_item = {
         "id": prepared_id,
         "type": ingredient_type,
@@ -126,11 +123,10 @@ def on_build_pizza(data):
             valid = True
 
     if not valid:
-        # Instead of rejecting the pizza outright, add it to wasted pizzas as "incomplete"
         pizza_id = str(uuid.uuid4())[:8]
         pizza = {
             "pizza_id": pizza_id,
-            "team": room,  # Using room as the team identifier in your simplified version
+            "team": room,
             "built_at": time.time(),
             "baking_time": 0,
             "status": "incomplete"
@@ -140,7 +136,6 @@ def on_build_pizza(data):
         socketio.emit('game_state', game_state, room=room)
         return
 
-    # Valid pizza: proceed as usual
     pizza_id = str(uuid.uuid4())[:8]
     pizza = {
         "pizza_id": pizza_id,
@@ -254,7 +249,6 @@ def round_timer(duration, room):
 def end_round(room):
     game_state = group_games[room]
     game_state["current_phase"] = "debrief"
-    # Compute the overall score for the room
     score = len(game_state["completed_pizzas"]) * 10 - len(game_state["wasted_pizzas"]) * 10 - len(game_state["prepared_ingredients"]) * 1
     result = {
         "completed_pizzas_count": len(game_state["completed_pizzas"]),
@@ -278,5 +272,12 @@ def debrief_timer(duration, room):
     game_state["round_start_time"] = None
     socketio.emit('game_reset', game_state, room=room)
 
+# Background sync task to send server time to all clients every second
+def sync_thread():
+    while True:
+        socketio.sleep(1)
+        socketio.emit('sync', {'server_time': time.time()})
+
 if __name__ == '__main__':
+    socketio.start_background_task(sync_thread)
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
