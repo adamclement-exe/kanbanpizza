@@ -27,12 +27,12 @@ def new_game_state():
         "max_rounds": 1,
         "current_phase": "waiting",
         "max_pizzas_in_oven": 3,
-        "round_duration": 420,  # Your desired value
+        "round_duration": 420, 
         "oven_on": False,
         "oven_timer_start": None,
         "round_start_time": None
     }
-    logging.debug(f"New game state created with round_duration: {state['round_duration']}")
+
     return state
 
 
