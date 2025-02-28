@@ -176,13 +176,12 @@
     var socket = io();
     var myRoom = "";
     var builderIngredients = [];
-    var roundEndTime = null;
     var timerInterval = null;
-    var ovenOn = false;
-    var ovenTimerStart = null;
     var ovenTimerInterval = null;
+    // clockOffset is computed as: (server time) - (client local time in seconds)
+    var clockOffset = 0;
 
-    // Define the emoji mapping for ingredients
+    // Ingredient emoji mapping
     var ingredientEmoji = {
       "base": "🟡",
       "sauce": "🍅",
@@ -198,6 +197,13 @@
     });
     document.getElementById("modal-close").addEventListener("click", function() {
       modal.hide();
+    });
+
+    // Listen for sync events to update clockOffset
+    socket.on('sync', function(data) {
+      var serverTime = data.server_time; // in seconds
+      var clientTime = Date.now() / 1000;
+      clockOffset = serverTime - clientTime;
     });
 
     function allowDrop(ev) { ev.preventDefault(); }
@@ -220,7 +226,6 @@
       builderIngredients.forEach(function(ing) {
         var item = document.createElement("div");
         item.classList.add("builder-item", "ingredient");
-        // Use the emoji mapping for display
         item.innerText = ingredientEmoji[ing.type] || ing.type;
         builderDiv.appendChild(item);
       });
@@ -232,20 +237,28 @@
       builderIngredients = [];
       updateBuilderDisplay();
     });
-    function startRoundTimer(duration) {
-      roundEndTime = Date.now() + duration * 1000;
+
+    // Updated startRoundTimer uses server time via clockOffset.
+    function startRoundTimer(roundStartTime, duration) {
+      var roundEndTime = roundStartTime + duration;
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(function() {
-        var remaining = Math.max(0, Math.floor((roundEndTime - Date.now()) / 1000));
+        var currentServerTime = Date.now()/1000 + clockOffset;
+        var remaining = Math.max(0, Math.floor(roundEndTime - currentServerTime));
         document.getElementById("timer").innerText = "Round Time remaining: " + remaining + " sec";
         if (remaining <= 0) { clearInterval(timerInterval); }
       }, 1000);
     }
+
+    // Updated startOvenTimer uses server time
     function startOvenTimer() {
-      ovenTimerStart = Date.now();
+      var currentServerTime = Date.now()/1000 + clockOffset;
+      // Set the oven start time as current server time
+      window.ovenTimerStart = currentServerTime;
       if (ovenTimerInterval) clearInterval(ovenTimerInterval);
       ovenTimerInterval = setInterval(function() {
-        var elapsed = Math.floor((Date.now() - ovenTimerStart) / 1000);
+        var now = Date.now()/1000 + clockOffset;
+        var elapsed = Math.floor(now - window.ovenTimerStart);
         document.getElementById("oven-timer").innerText = "Oven Time: " + elapsed + " sec";
       }, 1000);
     }
@@ -253,18 +266,19 @@
       clearInterval(ovenTimerInterval);
       document.getElementById("oven-timer").innerText = "Oven Time: 0 sec";
     }
+
     socket.on('connect', function() {
       myRoom = prompt("Enter your room number:") || "default";
       socket.emit('join', { room: myRoom });
     });
+
     socket.on('game_state', function(state) {
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
         if (state.round_start_time && state.round_duration) {
-          var elapsed = Math.floor(Date.now() / 1000 - state.round_start_time);
-          var remaining = Math.max(0, state.round_duration - elapsed);
-          startRoundTimer(remaining);
+          // Use server time to calculate remaining round time
+          startRoundTimer(state.round_start_time, state.round_duration);
         }
       } else if (state.current_phase === "waiting") {
         document.getElementById("game-area").style.display = "none";
@@ -272,20 +286,17 @@
         document.getElementById("start-round").style.display = "inline-block";
       }
 
-        if (state.oven_on && state.oven_timer_start) {
-    // Calculate the elapsed oven time based on the stored start time
-    var ovenElapsed = Math.floor(Date.now() / 1000 - state.oven_timer_start);
-    document.getElementById("oven-timer").innerText = "Oven Time: " + ovenElapsed + " sec";
-
-    // Restart the oven timer interval from the correct offset
-    if (ovenTimerInterval) clearInterval(ovenTimerInterval);
-    // Set the timer's start time using the already elapsed time for proper sync
-    ovenTimerStart = Date.now() - ovenElapsed * 1000;
-    ovenTimerInterval = setInterval(function() {
-      var elapsed = Math.floor((Date.now() - ovenTimerStart) / 1000);
-      document.getElementById("oven-timer").innerText = "Oven Time: " + elapsed + " sec";
-    }, 1000);
-  }
+      if (state.oven_on && state.oven_timer_start) {
+        var currentServerTime = Date.now()/1000 + clockOffset;
+        var ovenElapsed = Math.floor(currentServerTime - state.oven_timer_start);
+        document.getElementById("oven-timer").innerText = "Oven Time: " + ovenElapsed + " sec";
+        if (ovenTimerInterval) clearInterval(ovenTimerInterval);
+        ovenTimerInterval = setInterval(function() {
+          var now = Date.now()/1000 + clockOffset;
+          var elapsed = Math.floor(now - state.oven_timer_start);
+          document.getElementById("oven-timer").innerText = "Oven Time: " + elapsed + " sec";
+        }, 1000);
+      }
 
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
@@ -295,7 +306,6 @@
         div.setAttribute("draggable", "true");
         div.setAttribute("data-id", item.id);
         div.dataset.type = item.type;
-        // Use emoji mapping for display in the shared pool as well
         div.innerText = ingredientEmoji[item.type] || item.type;
         div.addEventListener("dragstart", drag);
         poolDiv.appendChild(div);
@@ -338,15 +348,16 @@
         wastedDiv.appendChild(div);
       });
     });
+
     socket.on('round_started', function(data) {
       document.getElementById("messages").innerText = "Round " + data.round + " started. Duration: " + data.duration + " sec";
       document.getElementById("game-area").style.display = "block";
       document.getElementById("start-round").style.display = "none";
       if (data.start_time && data.duration) {
-        var elapsed = Math.floor(Date.now() / 1000 - data.start_time);
-        var remaining = Math.max(0, data.duration - elapsed);
-        startRoundTimer(remaining);
-      } else { startRoundTimer(data.duration); }
+        startRoundTimer(data.start_time, data.duration);
+      } else {
+        startRoundTimer(Date.now()/1000 + clockOffset, data.duration);
+      }
     });
     socket.on('round_ended', function(result) {
       var msg = "Round ended!\nYour team scored: " + result.score;
@@ -357,18 +368,16 @@
       document.getElementById("timer").innerText = "Round Time remaining: --";
       document.getElementById("start-round").style.display = "inline-block";
     });
-    socket.on('ingredient_prepared', function(item) { document.getElementById("messages").innerText = "Ingredient prepared: " + ingredientEmoji[item.type] || item.type; });
+    socket.on('ingredient_prepared', function(item) { document.getElementById("messages").innerText = "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type); });
     socket.on('build_error', function(data) { document.getElementById("messages").innerText = "Build Error: " + data.message; });
     socket.on('pizza_built', function(pizza) { document.getElementById("messages").innerText = "Pizza built: " + pizza.pizza_id; });
     socket.on('oven_error', function(data) { document.getElementById("messages").innerText = "Oven Error: " + data.message; });
     socket.on('pizza_moved_to_oven', function(pizza) { document.getElementById("messages").innerText = "Pizza moved to oven: " + pizza.pizza_id; });
     socket.on('oven_toggled', function(data) {
       if (data.state === "on") {
-        ovenOn = true;
         startOvenTimer();
         document.getElementById("messages").innerText = "Oven turned ON.";
       } else if (data.state === "off") {
-        ovenOn = false;
         stopOvenTimer();
         document.getElementById("messages").innerText = "Oven turned OFF.";
       }
