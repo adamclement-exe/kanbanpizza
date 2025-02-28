@@ -242,7 +242,7 @@ def on_start_round(data):
     game_state["oven_timer_start"] = None
     socketio.emit('round_started', {
         "round": game_state["round"],
-        "duration": 400,
+        "duration":  game_state["round_duration"],
         "start_time": game_state["round_start_time"]
     }, room=room)
     threading.Thread(target=round_timer, args=(game_state["round_duration"], room)).start()
