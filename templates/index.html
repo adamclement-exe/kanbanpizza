@@ -162,8 +162,50 @@
             <li>Prepare ingredients using the provided buttons.</li>
             <li>Drag ingredients into your pizza builder and submit your pizza.</li>
             <li>Move built pizzas to the oven and control the oven (turn on/off) to cook pizzas correctly.</li>
-            <li>At the round's end, you'll see an alert with your team score.</li>
+            <li>At the round's end, you'll see a debrief with your team's score.</li>
           </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debrief Modal -->
+  <div class="modal fade" id="debriefModal" tabindex="-1" aria-labelledby="debriefModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content p-3">
+        <div class="modal-header">
+          <h5 class="modal-title" id="debriefModalLabel">End of Round Summary</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="debriefModalBody">
+          <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
+          <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
+          <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
+          <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
+          <hr>
+          <p>
+            <em class="text-muted">
+              In this round, did work pile up at any stage? How could you manage it better?
+            </em>
+          </p>
+          <p>
+            <em class="text-muted">
+              In this round, did visualizing your work help you spot any bottlenecks?
+            </em>
+          </p>
+           <p>
+            <em class="text-muted">
+               “Stop starting and start finishing.” - David J. Anderson
+            </em>
+          </p>
+           <p>
+            <em class="text-muted">
+               What do you think David meant by this?
+            </em>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
         </div>
       </div>
     </div>
@@ -230,9 +272,14 @@
         builderDiv.appendChild(item);
       });
     }
-    function prepareIngredient(type) { socket.emit('prepare_ingredient', { ingredient_type: type }); }
+    function prepareIngredient(type) {
+      socket.emit('prepare_ingredient', { ingredient_type: type });
+    }
     document.getElementById("submit-pizza").addEventListener("click", function() {
-      if (builderIngredients.length === 0) { alert("No ingredients selected for pizza!"); return; }
+      if (builderIngredients.length === 0) {
+        alert("No ingredients selected for pizza!");
+        return;
+      }
       socket.emit('build_pizza', { ingredients: builderIngredients });
       builderIngredients = [];
       updateBuilderDisplay();
@@ -253,7 +300,6 @@
     // Updated startOvenTimer uses server time
     function startOvenTimer() {
       var currentServerTime = Date.now()/1000 + clockOffset;
-      // Set the oven start time as current server time
       window.ovenTimerStart = currentServerTime;
       if (ovenTimerInterval) clearInterval(ovenTimerInterval);
       ovenTimerInterval = setInterval(function() {
@@ -277,7 +323,6 @@
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
         if (state.round_start_time && state.round_duration) {
-          // Use server time to calculate remaining round time
           startRoundTimer(state.round_start_time, state.round_duration);
         }
       } else if (state.current_phase === "waiting") {
@@ -319,7 +364,9 @@
         var btn = document.createElement("button");
         btn.className = "btn btn-sm btn-outline-primary";
         btn.innerText = "Move to Oven";
-        btn.onclick = function() { socket.emit('move_to_oven', { pizza_id: pizza.pizza_id }); };
+        btn.onclick = function() {
+          socket.emit('move_to_oven', { pizza_id: pizza.pizza_id });
+        };
         div.appendChild(btn);
         builtDiv.appendChild(div);
       });
@@ -359,20 +406,48 @@
         startRoundTimer(Date.now()/1000 + clockOffset, data.duration);
       }
     });
+
+    // REPLACED the simple alert with Debrief Modal
     socket.on('round_ended', function(result) {
-      var msg = "Round ended!\nYour team scored: " + result.score;
-      alert(msg);
+      // Populate modal fields
+      document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
+      document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
+      document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
+      document.getElementById("debrief-score").innerText = result.score;
+
+      // Show the Debrief Modal
+      var debriefModal = new bootstrap.Modal(document.getElementById('debriefModal'), {});
+      debriefModal.show();
     });
+
     socket.on('game_reset', function(state) {
       document.getElementById("messages").innerText = "Round reset. Ready for a new round.";
       document.getElementById("timer").innerText = "Round Time remaining: --";
       document.getElementById("start-round").style.display = "inline-block";
+
+      // Optionally hide the Debrief Modal if still open
+      var debriefModalEl = document.getElementById('debriefModal');
+      var modalInstance = bootstrap.Modal.getInstance(debriefModalEl);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
     });
-    socket.on('ingredient_prepared', function(item) { document.getElementById("messages").innerText = "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type); });
-    socket.on('build_error', function(data) { document.getElementById("messages").innerText = "Build Error: " + data.message; });
-    socket.on('pizza_built', function(pizza) { document.getElementById("messages").innerText = "Pizza built: " + pizza.pizza_id; });
-    socket.on('oven_error', function(data) { document.getElementById("messages").innerText = "Oven Error: " + data.message; });
-    socket.on('pizza_moved_to_oven', function(pizza) { document.getElementById("messages").innerText = "Pizza moved to oven: " + pizza.pizza_id; });
+
+    socket.on('ingredient_prepared', function(item) {
+      document.getElementById("messages").innerText = "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type);
+    });
+    socket.on('build_error', function(data) {
+      document.getElementById("messages").innerText = "Build Error: " + data.message;
+    });
+    socket.on('pizza_built', function(pizza) {
+      document.getElementById("messages").innerText = "Pizza built: " + pizza.pizza_id;
+    });
+    socket.on('oven_error', function(data) {
+      document.getElementById("messages").innerText = "Oven Error: " + data.message;
+    });
+    socket.on('pizza_moved_to_oven', function(pizza) {
+      document.getElementById("messages").innerText = "Pizza moved to oven: " + pizza.pizza_id;
+    });
     socket.on('oven_toggled', function(data) {
       if (data.state === "on") {
         startOvenTimer();
@@ -382,10 +457,18 @@
         document.getElementById("messages").innerText = "Oven turned OFF.";
       }
     });
-    document.getElementById("oven-on").addEventListener("click", function() { socket.emit('toggle_oven', { state: "on" }); });
-    document.getElementById("oven-off").addEventListener("click", function() { socket.emit('toggle_oven', { state: "off" }); });
-    document.getElementById("start-round").addEventListener("click", function() { socket.emit('start_round', {}); });
-    window.addEventListener("beforeunload", function () { socket.disconnect(); });
+    document.getElementById("oven-on").addEventListener("click", function() {
+      socket.emit('toggle_oven', { state: "on" });
+    });
+    document.getElementById("oven-off").addEventListener("click", function() {
+      socket.emit('toggle_oven', { state: "off" });
+    });
+    document.getElementById("start-round").addEventListener("click", function() {
+      socket.emit('start_round', {});
+    });
+    window.addEventListener("beforeunload", function () {
+      socket.disconnect();
+    });
   </script>
 </body>
 </html>
