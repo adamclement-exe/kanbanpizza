@@ -30,7 +30,7 @@
       margin-bottom: 20px;
     }
     .ingredient{
-    font-size:2rem;
+      font-size:2rem;
     }
     /* Timer containers using the digital look font */
     .timer-container {
@@ -49,6 +49,10 @@
       background: radial-gradient(circle, #fff 60%, #e0e0e0);
       box-shadow: 0 4px 8px rgba(0,0,0,0.3);
       font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
     /* Oven styling */
     .timer-container.oven {
@@ -61,26 +65,34 @@
       font-size: 1rem;
       color: #fff;
       margin-right:4vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .btn-custom {
+      margin-right: 6px;
+    }
+    .pizza-item {
+      margin: 4px 0;
     }
   </style>
 </head>
-
 <body>
   <div class="container game-container">
-<header class="d-flex justify-content-between align-items-center">
-  <h1 class="h3">🍕 Adam's Kanban Pizza Shop</h1>
-  <div class="d-flex">
+    <header class="d-flex justify-content-between align-items-center">
+      <h1 class="h3">🍕 Adam's Kanban Pizza Shop</h1>
+      <div class="d-flex">
         <!-- Oven container for oven timer -->
-    <div class="timer-container oven">
-      <span id="oven-timer" class="oven-timer">Oven Time: --</span>
-    </div>
-    <!-- Stopwatch container for round timer -->
-    <div class="timer-container stopwatch me-3">
-      <span id="timer" class="timer">Round Time: --</span>
-    </div>
-
-  </div>
-</header>
+        <div class="timer-container oven">
+          <span id="oven-timer" class="oven-timer">Oven Time: --</span>
+        </div>
+        <!-- Stopwatch container for round timer -->
+        <div class="timer-container stopwatch me-3">
+          <span id="timer" class="timer">Round Time: --</span>
+        </div>
+      </div>
+    </header>
 
     <nav class="mb-3">
       <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
@@ -88,6 +100,7 @@
       <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
       <button id="instructions-btn" class="btn btn-secondary btn-custom">Instructions</button>
     </nav>
+
     <main>
       <div id="game-area" class="mb-3" style="display: none;">
         <div class="row">
@@ -101,27 +114,32 @@
             </div>
             <h4>Shared Ingredients</h4>
             <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;"></div>
+
             <h4>Your Pizza Builder</h4>
-            <div id="pizza-builder" ondrop="dropToBuilder(event)" ondragover="allowDrop(event)" class="d-flex flex-wrap border p-2 mb-3"  style="min-height: 100px;"></div>
+            <div id="pizza-builder"
+                 ondrop="dropToBuilder(event)"
+                 ondragover="allowDrop(event)"
+                 class="d-flex flex-wrap border p-2 mb-3"
+                 style="min-height: 100px;"></div>
             <button id="submit-pizza" class="btn btn-primary btn-custom">Submit Pizza</button>
           </div>
           <div class="col-md-6">
             <h2>Pizza Status</h2>
             <div class="mb-2">
               <h5>Built Pizzas</h5>
-              <div id="built-pizzas" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="built-pizzas" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Oven</h5>
-              <div id="oven" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="oven" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Completed Pizzas</h5>
-              <div id="completed" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="completed" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Wasted Pizzas</h5>
-              <div id="wasted" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="wasted" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
           </div>
         </div>
@@ -154,6 +172,7 @@
             <li>Either 4 Ham pieces <em>or</em> 2 Ham pieces and 2 Pineapple pieces</li>
           </ul>
           <p>Drag the prepared ingredients into your pizza builder and submit your pizza.</p>
+
           <p><strong>Cooking Instructions:</strong></p>
           <ul>
             <li>If a pizza cooks for less than 30 seconds, it is undercooked and will be wasted.</li>
@@ -182,11 +201,11 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body" id="debriefModalBody">
-        <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
-        <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
-        <p><strong>Unsold Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
-        <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
-        <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
+          <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
+          <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
+          <p><strong>Uncooked Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
+          <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
+          <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
           <hr>
           <p>
             <em class="text-muted">
@@ -198,14 +217,14 @@
               In this round, did visualizing your work help you spot any bottlenecks?
             </em>
           </p>
-           <p>
+          <p>
             <em class="text-muted">
-               “Stop starting and start finishing.” - David J. Anderson
+              “Stop starting and start finishing.” - David J. Anderson
             </em>
           </p>
-           <p>
+          <p>
             <em class="text-muted">
-               What do you think David meant by this?
+              What do you think David meant by this?
             </em>
           </p>
         </div>
@@ -223,10 +242,6 @@
     var socket = io();
     var myRoom = "";
     var builderIngredients = [];
-    var timerInterval = null;
-    var ovenTimerInterval = null;
-    // clockOffset is computed as: (server time) - (client local time in seconds)
-    var clockOffset = 0;
 
     // Ingredient emoji mapping
     var ingredientEmoji = {
@@ -236,6 +251,15 @@
       "pineapple": "🍍"
     };
 
+    // ----- REMOVED all local clock usage. We rely entirely on server "time_update" events. -----
+
+    // Listen for server-provided times
+    socket.on('time_update', function(data) {
+      // data.roundTimeRemaining, data.ovenTime
+      document.getElementById("timer").innerText = "Round Time: " + data.roundTimeRemaining + " sec";
+      document.getElementById("oven-timer").innerText = "Oven Time: " + data.ovenTime + " sec";
+    });
+
     // Modal functionality using Bootstrap
     var modalEl = document.getElementById("modal");
     var modal = new bootstrap.Modal(modalEl);
@@ -244,13 +268,6 @@
     });
     document.getElementById("modal-close").addEventListener("click", function() {
       modal.hide();
-    });
-
-    // Listen for sync events to update clockOffset
-    socket.on('sync', function(data) {
-      var serverTime = data.server_time; // in seconds
-      var clientTime = Date.now() / 1000;
-      clockOffset = serverTime - clientTime;
     });
 
     function allowDrop(ev) { ev.preventDefault(); }
@@ -290,64 +307,23 @@
       updateBuilderDisplay();
     });
 
-    // Updated startRoundTimer uses server time via clockOffset.
-    function startRoundTimer(roundStartTime, duration) {
-      var roundEndTime = roundStartTime + duration;
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(function() {
-        var currentServerTime = Date.now()/1000 + clockOffset;
-        var remaining = Math.max(0, Math.floor(roundEndTime - currentServerTime));
-        document.getElementById("timer").innerText = "Round Time remaining: \n" + remaining + " sec";
-        if (remaining <= 0) { clearInterval(timerInterval); }
-      }, 1000);
-    }
-
-    // Updated startOvenTimer uses server time
-    function startOvenTimer() {
-      var currentServerTime = Date.now()/1000 + clockOffset;
-      window.ovenTimerStart = currentServerTime;
-      if (ovenTimerInterval) clearInterval(ovenTimerInterval);
-      ovenTimerInterval = setInterval(function() {
-        var now = Date.now()/1000 + clockOffset;
-        var elapsed = Math.floor(now - window.ovenTimerStart);
-        document.getElementById("oven-timer").innerText = "Oven Time:\n " + elapsed + " sec";
-      }, 1000);
-    }
-    function stopOvenTimer() {
-      clearInterval(ovenTimerInterval);
-      document.getElementById("oven-timer").innerText = "Oven Time: 0 sec";
-    }
-
     socket.on('connect', function() {
       myRoom = prompt("Enter your room number:") || "default";
       socket.emit('join', { room: myRoom });
     });
 
     socket.on('game_state', function(state) {
+      // Show/hide UI depending on current_phase
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
-        if (state.round_start_time && state.round_duration) {
-          startRoundTimer(state.round_start_time, state.round_duration);
-        }
       } else if (state.current_phase === "waiting") {
         document.getElementById("game-area").style.display = "none";
-        document.getElementById("timer").innerText = "Round Time remaining: --";
+        document.getElementById("timer").innerText = "Round Time: --";
         document.getElementById("start-round").style.display = "inline-block";
       }
 
-      if (state.oven_on && state.oven_timer_start) {
-        var currentServerTime = Date.now()/1000 + clockOffset;
-        var ovenElapsed = Math.floor(currentServerTime - state.oven_timer_start);
-        document.getElementById("oven-timer").innerText = "Oven Time: " + ovenElapsed + " sec";
-        if (ovenTimerInterval) clearInterval(ovenTimerInterval);
-        ovenTimerInterval = setInterval(function() {
-          var now = Date.now()/1000 + clockOffset;
-          var elapsed = Math.floor(now - state.oven_timer_start);
-          document.getElementById("oven-timer").innerText = "Oven Time: " + elapsed + " sec";
-        }, 1000);
-      }
-
+      // Update prepared ingredients
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
       state.prepared_ingredients.forEach(function(item) {
@@ -360,6 +336,8 @@
         div.addEventListener("dragstart", drag);
         poolDiv.appendChild(div);
       });
+
+      // Update built pizzas
       var builtDiv = document.getElementById("built-pizzas");
       builtDiv.innerHTML = "";
       state.built_pizzas.forEach(function(pizza) {
@@ -367,7 +345,7 @@
         div.className = "pizza-item";
         div.innerText = "Pizza " + pizza.pizza_id;
         var btn = document.createElement("button");
-        btn.className = "btn btn-sm btn-outline-primary";
+        btn.className = "btn btn-sm btn-outline-primary ms-2";
         btn.innerText = "Move to Oven";
         btn.onclick = function() {
           socket.emit('move_to_oven', { pizza_id: pizza.pizza_id });
@@ -375,6 +353,8 @@
         div.appendChild(btn);
         builtDiv.appendChild(div);
       });
+
+      // Oven
       var ovenDiv = document.getElementById("oven");
       ovenDiv.innerHTML = "";
       state.oven.forEach(function(pizza) {
@@ -383,6 +363,8 @@
         div.innerText = "Pizza " + pizza.pizza_id + " (baking)";
         ovenDiv.appendChild(div);
       });
+
+      // Completed
       var compDiv = document.getElementById("completed");
       compDiv.innerHTML = "";
       state.completed_pizzas.forEach(function(pizza) {
@@ -391,6 +373,8 @@
         div.innerText = "Pizza " + pizza.pizza_id + " completed";
         compDiv.appendChild(div);
       });
+
+      // Wasted
       var wastedDiv = document.getElementById("wasted");
       wastedDiv.innerHTML = "";
       state.wasted_pizzas.forEach(function(pizza) {
@@ -402,36 +386,30 @@
     });
 
     socket.on('round_started', function(data) {
-      document.getElementById("messages").innerText = "Round " + data.round + " started. Duration: " + data.duration + " sec";
+      document.getElementById("messages").innerText =
+        "Round " + data.round + " started. Duration: " + data.duration + " sec";
       document.getElementById("game-area").style.display = "block";
       document.getElementById("start-round").style.display = "none";
-      if (data.start_time && data.duration) {
-        startRoundTimer(data.start_time, data.duration);
-      } else {
-        startRoundTimer(Date.now()/1000 + clockOffset, data.duration);
-      }
     });
 
-    // REPLACED the simple alert with Debrief Modal
+    // Debrief Modal
     socket.on('round_ended', function(result) {
-      // Populate modal fields
-        document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
-        document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
-        document.getElementById("debrief-pizzas-unsold").innerText = result.unsold_pizzas_count; // New unsold pizzas line
-        document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
-        document.getElementById("debrief-score").innerText = result.score;
+      document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
+      document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
+      document.getElementById("debrief-pizzas-unsold").innerText = result.unsold_pizzas_count;
+      document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
+      document.getElementById("debrief-score").innerText = result.score;
 
-      // Show the Debrief Modal
       var debriefModal = new bootstrap.Modal(document.getElementById('debriefModal'), {});
       debriefModal.show();
     });
 
     socket.on('game_reset', function(state) {
       document.getElementById("messages").innerText = "Round reset. Ready for a new round.";
-      document.getElementById("timer").innerText = "Round Time remaining: --";
+      document.getElementById("timer").innerText = "Round Time: --";
       document.getElementById("start-round").style.display = "inline-block";
 
-      // Optionally hide the Debrief Modal if still open
+      // Optionally hide the Debrief Modal if open
       var debriefModalEl = document.getElementById('debriefModal');
       var modalInstance = bootstrap.Modal.getInstance(debriefModalEl);
       if (modalInstance) {
@@ -439,8 +417,10 @@
       }
     });
 
+    // Errors & status messages
     socket.on('ingredient_prepared', function(item) {
-      document.getElementById("messages").innerText = "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type);
+      document.getElementById("messages").innerText =
+        "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type);
     });
     socket.on('build_error', function(data) {
       document.getElementById("messages").innerText = "Build Error: " + data.message;
@@ -455,14 +435,11 @@
       document.getElementById("messages").innerText = "Pizza moved to oven: " + pizza.pizza_id;
     });
     socket.on('oven_toggled', function(data) {
-      if (data.state === "on") {
-        startOvenTimer();
-        document.getElementById("messages").innerText = "Oven turned ON.";
-      } else if (data.state === "off") {
-        stopOvenTimer();
-        document.getElementById("messages").innerText = "Oven turned OFF.";
-      }
+      document.getElementById("messages").innerText =
+        (data.state === "on") ? "Oven turned ON." : "Oven turned OFF.";
     });
+
+    // Buttons
     document.getElementById("oven-on").addEventListener("click", function() {
       socket.emit('toggle_oven', { state: "on" });
     });
@@ -472,6 +449,8 @@
     document.getElementById("start-round").addEventListener("click", function() {
       socket.emit('start_round', {});
     });
+
+    // Disconnect on page unload
     window.addEventListener("beforeunload", function () {
       socket.disconnect();
     });
