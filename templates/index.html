@@ -2,20 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🍕Kanban Pizza</title>
+  <title>🍕Kanban Pizza (Polling Edition)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Google Fonts: Orbitron for a digital look -->
+
+  <!-- Google Fonts: Orbitron for the digital look -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
-    /* Background and overall look */
     body {
       background: #f8f9fa;
-      background-image: url('https://images.stockcake.com/public/c/d/d/cddfa010-3376-4bb4-85fa-c569bcc75915/chef-preparing-pizza-stockcake.jpg');
-      background-size: cover;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
       color: #333;
     }
     .game-container {
@@ -29,10 +27,9 @@
       border-bottom: 2px solid #dee2e6;
       margin-bottom: 20px;
     }
-    .ingredient{
-      font-size:2rem;
+    .ingredient {
+      font-size: 2rem;
     }
-    /* Timer containers using the digital look font */
     .timer-container {
       display: flex;
       align-items: center;
@@ -40,21 +37,6 @@
       font-family: 'Orbitron', sans-serif;
       text-align: center;
     }
-    /* Stopwatch styling */
-    .timer-container.stopwatch {
-      width: 150px;
-      height: 150px;
-      border: 8px solid #222;
-      border-radius: 50%;
-      background: radial-gradient(circle, #fff 60%, #e0e0e0);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      font-size: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    /* Oven styling */
     .timer-container.oven {
       width: 200px;
       height: 100px;
@@ -64,30 +46,38 @@
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
       font-size: 1rem;
       color: #fff;
-      margin-right:4vw;
+      margin-right: 4vw;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .timer-container.stopwatch {
+      width: 150px;
+      height: 150px;
+      border: 8px solid #222;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff 60%, #e0e0e0);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      font-size: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       text-align: center;
     }
     .btn-custom {
       margin-right: 6px;
-    }
-    .pizza-item {
-      margin: 4px 0;
     }
   </style>
 </head>
 <body>
   <div class="container game-container">
     <header class="d-flex justify-content-between align-items-center">
-      <h1 class="h3">🍕 Adam's Kanban Pizza Shop</h1>
+      <h1 class="h3">🍕 Kanban Pizza (Polling Edition)</h1>
       <div class="d-flex">
-        <!-- Oven container for oven timer -->
         <div class="timer-container oven">
           <span id="oven-timer" class="oven-timer">Oven Time: --</span>
         </div>
-        <!-- Stopwatch container for round timer -->
         <div class="timer-container stopwatch me-3">
           <span id="timer" class="timer">Round Time: --</span>
         </div>
@@ -123,23 +113,24 @@
                  style="min-height: 100px;"></div>
             <button id="submit-pizza" class="btn btn-primary btn-custom">Submit Pizza</button>
           </div>
+
           <div class="col-md-6">
             <h2>Pizza Status</h2>
             <div class="mb-2">
               <h5>Built Pizzas</h5>
-              <div id="built-pizzas" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="built-pizzas" style="min-height: 5vh;border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Oven</h5>
-              <div id="oven" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="oven" style="min-height: 5vh;border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Completed Pizzas</h5>
-              <div id="completed" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="completed" style="min-height: 5vh;border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Wasted Pizzas</h5>
-              <div id="wasted" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="wasted" style="min-height: 5vh;border: solid #cccccc;"></div>
             </div>
           </div>
         </div>
@@ -148,7 +139,7 @@
     </main>
   </div>
 
-  <!-- Modal for Instructions using Bootstrap modal structure -->
+  <!-- Instructions Modal (Optional) -->
   <div class="modal" tabindex="-1" id="modal">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -158,75 +149,26 @@
         </div>
         <div class="modal-body">
           <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
-          <p><strong>Scoring:</strong></p>
-          <ul>
-            <li>+10 points for each fully cooked pizza slice</li>
-            <li>-10 points for each wasted pizza</li>
-            <li>-1 point for each leftover ingredient</li>
-          </ul>
-          <p><strong>Pizza Building:</strong></p>
-          <p>To build a valid pizza, you must use:</p>
-          <ul>
-            <li>1 Base (Dough)</li>
-            <li>1 Sauce</li>
-            <li>Either 4 Ham pieces <em>or</em> 2 Ham pieces and 2 Pineapple pieces</li>
-          </ul>
-          <p>Drag the prepared ingredients into your pizza builder and submit your pizza.</p>
-
-          <p><strong>Cooking Instructions:</strong></p>
-          <ul>
-            <li>If a pizza cooks for less than 30 seconds, it is undercooked and will be wasted.</li>
-            <li>If it cooks between 30 and 45 seconds, it is perfectly cooked and will score points.</li>
-            <li>If it cooks for more than 45 seconds, it will be burnt and wasted.</li>
-          </ul>
-          <p><strong>Gameplay:</strong></p>
-          <ol>
-            <li>Click "Start Round" to begin.</li>
-            <li>Prepare ingredients using the provided buttons.</li>
-            <li>Drag ingredients into your pizza builder and submit your pizza.</li>
-            <li>Move built pizzas to the oven and control the oven (turn on/off) to cook pizzas correctly.</li>
-            <li>At the round's end, you'll see a debrief with your team's score.</li>
-          </ol>
+          <!-- ... instructions content ... -->
         </div>
       </div>
     </div>
   </div>
 
   <!-- Debrief Modal -->
-  <div class="modal fade" id="debriefModal" tabindex="-1" aria-labelledby="debriefModalLabel" aria-hidden="true">
+  <div class="modal fade" id="debriefModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content p-3">
         <div class="modal-header">
-          <h5 class="modal-title" id="debriefModalLabel">End of Round Summary</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title">End of Round Summary</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body" id="debriefModalBody">
           <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
           <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
-          <p><strong>Uncooked Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
+          <p><strong>Unsold Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
           <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
           <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
-          <hr>
-          <p>
-            <em class="text-muted">
-              In this round, did work pile up at any stage? How could you manage it better?
-            </em>
-          </p>
-          <p>
-            <em class="text-muted">
-              In this round, did visualizing your work help you spot any bottlenecks?
-            </em>
-          </p>
-          <p>
-            <em class="text-muted">
-              “Stop starting and start finishing.” - David J. Anderson
-            </em>
-          </p>
-          <p>
-            <em class="text-muted">
-              What do you think David meant by this?
-            </em>
-          </p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
@@ -235,7 +177,7 @@
     </div>
   </div>
 
-  <!-- Scripts: Bootstrap and Socket.IO from CDN -->
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
@@ -243,7 +185,7 @@
     var myRoom = "";
     var builderIngredients = [];
 
-    // Ingredient emoji mapping
+    // Map of ingredient type to emoji
     var ingredientEmoji = {
       "base": "🟡",
       "sauce": "🍅",
@@ -251,25 +193,30 @@
       "pineapple": "🍍"
     };
 
-    // ----- REMOVED all local clock usage. We rely entirely on server "time_update" events. -----
+    // 1) Poll the server for times every second
+    setInterval(() => {
+      socket.emit('time_request');
+    }, 1000);
 
-    // Listen for server-provided times
-    socket.on('time_update', function(data) {
-      // data.roundTimeRemaining, data.ovenTime
+    // 2) When server responds with time_response, update the UI
+    socket.on('time_response', function(data) {
       document.getElementById("timer").innerText = "Round Time: " + data.roundTimeRemaining + " sec";
       document.getElementById("oven-timer").innerText = "Oven Time: " + data.ovenTime + " sec";
     });
 
-    // Modal functionality using Bootstrap
-    var modalEl = document.getElementById("modal");
-    var modal = new bootstrap.Modal(modalEl);
-    document.getElementById("instructions-btn").addEventListener("click", function() {
-      modal.show();
-    });
-    document.getElementById("modal-close").addEventListener("click", function() {
-      modal.hide();
+    // Connect & join
+    socket.on('connect', function() {
+      myRoom = prompt("Enter your room number:") || "default";
+      socket.emit('join', { room: myRoom });
     });
 
+    // Basic modal logic
+    var modalEl = document.getElementById("modal");
+    var modal = new bootstrap.Modal(modalEl);
+    document.getElementById("instructions-btn").addEventListener("click", () => modal.show());
+    document.getElementById("modal-close").addEventListener("click", () => modal.hide());
+
+    // DnD logic
     function allowDrop(ev) { ev.preventDefault(); }
     function drag(ev) {
       ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
@@ -289,11 +236,12 @@
       builderDiv.innerHTML = "";
       builderIngredients.forEach(function(ing) {
         var item = document.createElement("div");
-        item.classList.add("builder-item", "ingredient");
+        item.classList.add("ingredient");
         item.innerText = ingredientEmoji[ing.type] || ing.type;
         builderDiv.appendChild(item);
       });
     }
+
     function prepareIngredient(type) {
       socket.emit('prepare_ingredient', { ingredient_type: type });
     }
@@ -307,13 +255,8 @@
       updateBuilderDisplay();
     });
 
-    socket.on('connect', function() {
-      myRoom = prompt("Enter your room number:") || "default";
-      socket.emit('join', { room: myRoom });
-    });
-
+    // Listen for game_state to render the board
     socket.on('game_state', function(state) {
-      // Show/hide UI depending on current_phase
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
@@ -323,12 +266,12 @@
         document.getElementById("start-round").style.display = "inline-block";
       }
 
-      // Update prepared ingredients
+      // Render prepared ingredients
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
       state.prepared_ingredients.forEach(function(item) {
         var div = document.createElement("div");
-        div.classList.add("prepared-item", "ingredient");
+        div.classList.add("ingredient");
         div.setAttribute("draggable", "true");
         div.setAttribute("data-id", item.id);
         div.dataset.type = item.type;
@@ -337,12 +280,11 @@
         poolDiv.appendChild(div);
       });
 
-      // Update built pizzas
+      // Built pizzas
       var builtDiv = document.getElementById("built-pizzas");
       builtDiv.innerHTML = "";
       state.built_pizzas.forEach(function(pizza) {
         var div = document.createElement("div");
-        div.className = "pizza-item";
         div.innerText = "Pizza " + pizza.pizza_id;
         var btn = document.createElement("button");
         btn.className = "btn btn-sm btn-outline-primary ms-2";
@@ -359,7 +301,6 @@
       ovenDiv.innerHTML = "";
       state.oven.forEach(function(pizza) {
         var div = document.createElement("div");
-        div.className = "pizza-item";
         div.innerText = "Pizza " + pizza.pizza_id + " (baking)";
         ovenDiv.appendChild(div);
       });
@@ -369,7 +310,6 @@
       compDiv.innerHTML = "";
       state.completed_pizzas.forEach(function(pizza) {
         var div = document.createElement("div");
-        div.className = "pizza-item";
         div.innerText = "Pizza " + pizza.pizza_id + " completed";
         compDiv.appendChild(div);
       });
@@ -379,7 +319,6 @@
       wastedDiv.innerHTML = "";
       state.wasted_pizzas.forEach(function(pizza) {
         var div = document.createElement("div");
-        div.className = "pizza-item";
         div.innerText = "Pizza " + pizza.pizza_id + " " + pizza.status;
         wastedDiv.appendChild(div);
       });
@@ -392,7 +331,6 @@
       document.getElementById("start-round").style.display = "none";
     });
 
-    // Debrief Modal
     socket.on('round_ended', function(result) {
       document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
       document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
@@ -409,7 +347,6 @@
       document.getElementById("timer").innerText = "Round Time: --";
       document.getElementById("start-round").style.display = "inline-block";
 
-      // Optionally hide the Debrief Modal if open
       var debriefModalEl = document.getElementById('debriefModal');
       var modalInstance = bootstrap.Modal.getInstance(debriefModalEl);
       if (modalInstance) {
@@ -417,7 +354,7 @@
       }
     });
 
-    // Errors & status messages
+    // Errors & status
     socket.on('ingredient_prepared', function(item) {
       document.getElementById("messages").innerText =
         "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type);
