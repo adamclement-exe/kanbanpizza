@@ -271,6 +271,22 @@
         document.getElementById("timer").innerText = "Round Time remaining: --";
         document.getElementById("start-round").style.display = "inline-block";
       }
+
+        if (state.oven_on && state.oven_timer_start) {
+    // Calculate the elapsed oven time based on the stored start time
+    var ovenElapsed = Math.floor(Date.now() / 1000 - state.oven_timer_start);
+    document.getElementById("oven-timer").innerText = "Oven Time: " + ovenElapsed + " sec";
+
+    // Restart the oven timer interval from the correct offset
+    if (ovenTimerInterval) clearInterval(ovenTimerInterval);
+    // Set the timer's start time using the already elapsed time for proper sync
+    ovenTimerStart = Date.now() - ovenElapsed * 1000;
+    ovenTimerInterval = setInterval(function() {
+      var elapsed = Math.floor((Date.now() - ovenTimerStart) / 1000);
+      document.getElementById("oven-timer").innerText = "Oven Time: " + elapsed + " sec";
+    }, 1000);
+  }
+
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
       state.prepared_ingredients.forEach(function(item) {
