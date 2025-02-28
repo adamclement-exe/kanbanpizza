@@ -1,47 +1,21 @@
 import time
 import threading
 import uuid
+import logging
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
-import logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-async_mode = None
-socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-
-def time_update_thread():
-    while True:
-        socketio.sleep(1)  # once per second
-        for room, game_state in group_games.items():
-            roundTimeRemaining = 0
-            ovenTime = 0
-            if game_state["current_phase"] == "round" and game_state["round_start_time"]:
-                elapsed = time.time() - game_state["round_start_time"]
-                # how much time is left in the round
-                left = game_state["round_duration"] - elapsed
-                roundTimeRemaining = max(0, int(left))
-            if game_state["oven_on"] and game_state["oven_timer_start"]:
-                # how long has the oven been on
-                ovenTime = int(time.time() - game_state["oven_timer_start"])
-
-            socketio.emit("time_update", {
-                "roundTimeRemaining": roundTimeRemaining,
-                "ovenTime": ovenTime
-            }, room=room)
-
-
-socketio.start_background_task(time_update_thread)
-# Global dictionaries for room game states and mapping player session IDs to their room
+# Game state dictionaries
 group_games = {}
 player_group = {}
 
 def new_game_state():
-    # We store round_start_time to compute roundTimeRemaining
-    # We store oven_timer_start to compute ovenTime
-    # We also track whether the round is in progress and whether oven is on
     return {
         "players": {},
         "prepared_ingredients": [],
@@ -53,12 +27,10 @@ def new_game_state():
         "max_rounds": 1,
         "current_phase": "waiting",
         "max_pizzas_in_oven": 3,
-        "round_duration": 420,  # 7 min by default
+        "round_duration": 420,  # 7 minutes
         "oven_on": False,
         "oven_timer_start": None,
-        "round_start_time": None,
-        # We'll also store an ephemeral "round_time_remaining" or "oven_time" in memory
-        # but we primarily compute them on the fly in the time_update_thread
+        "round_start_time": None
     }
 
 @app.route('/')
@@ -75,23 +47,59 @@ def on_join(data):
     if room not in group_games:
         group_games[room] = new_game_state()
     game_state = group_games[room]
+
     player_group[request.sid] = room
     join_room(room)
-    socketio.emit('player_joined', {"sid": request.sid, "room": room}, room=room)
+
     socketio.emit('game_state', game_state, room=room)
     print(f"Client {request.sid} joined room {room}")
 
 @socketio.on('disconnect')
 def on_disconnect():
-    room = player_group.get(request.sid)
+    sid = request.sid
+    room = player_group.get(sid)
     if room:
         game_state = group_games.get(room)
-        if game_state and request.sid in game_state["players"]:
-            del game_state["players"][request.sid]
-        del player_group[request.sid]
+        if game_state and sid in game_state["players"]:
+            del game_state["players"][sid]
+        del player_group[sid]
         socketio.emit('game_state', game_state, room=room)
-        print("Client disconnected:", request.sid)
+        print("Client disconnected:", sid)
 
+# ---------------------------------------------------------------------
+# Poll-based approach: client emits 'time_request', server calculates
+# roundTimeRemaining & ovenTime on demand, then replies 'time_response'.
+# ---------------------------------------------------------------------
+@socketio.on('time_request')
+def on_time_request():
+    sid = request.sid
+    room = player_group.get(sid, "default")
+    game_state = group_games.get(room)
+    if not game_state:
+        # If something is off, just respond with 0
+        emit('time_response', {"roundTimeRemaining": 0, "ovenTime": 0})
+        return
+
+    # Calculate round time remaining
+    roundTimeRemaining = 0
+    if game_state["current_phase"] == "round" and game_state["round_start_time"]:
+        elapsed = time.time() - game_state["round_start_time"]
+        left = game_state["round_duration"] - elapsed
+        roundTimeRemaining = max(0, int(left))
+
+    # Calculate oven time
+    ovenTime = 0
+    if game_state["oven_on"] and game_state["oven_timer_start"]:
+        ovenTime = int(time.time() - game_state["oven_timer_start"])
+
+    emit('time_response', {
+        "roundTimeRemaining": roundTimeRemaining,
+        "ovenTime": ovenTime
+    })
+
+# ---------------------------
+# Example event handlers below
+# ---------------------------
 @socketio.on('prepare_ingredient')
 def on_prepare_ingredient(data):
     room = player_group.get(request.sid, "default")
@@ -143,7 +151,6 @@ def on_build_pizza(data):
             counts[ing_type] += 1
 
     valid = False
-    # Valid combos:
     # 1 base, 1 sauce, and either 4 ham or 2 ham + 2 pineapple
     if counts["base"] == 1 and counts["sauce"] == 1:
         if counts["ham"] == 4 and counts["pineapple"] == 0:
@@ -161,11 +168,10 @@ def on_build_pizza(data):
             "status": "incomplete"
         }
         game_state["wasted_pizzas"].append(pizza)
-        socketio.emit('build_error', {"message": "Invalid combination: Pizza wasted as incomplete."}, room=request.sid)
+        socketio.emit('build_error', {"message": "Invalid combo: Wasted as incomplete."}, room=request.sid)
         socketio.emit('game_state', game_state, room=room)
         return
 
-    # If valid:
     pizza = {
         "pizza_id": pizza_id,
         "team": room,
@@ -180,6 +186,7 @@ def on_build_pizza(data):
 def on_move_to_oven(data):
     room = player_group.get(request.sid, "default")
     game_state = group_games.get(room, new_game_state())
+
     if game_state["oven_on"]:
         emit('oven_error', {"message": "Oven is on; cannot add pizzas while on."}, room=request.sid)
         return
@@ -209,6 +216,7 @@ def toggle_oven(data):
     room = player_group.get(request.sid, "default")
     game_state = group_games.get(room, new_game_state())
     desired_state = data.get("state")
+
     if desired_state == "on":
         if game_state["oven_on"]:
             emit('oven_error', {"message": "Oven is already on."}, room=request.sid)
@@ -217,15 +225,17 @@ def toggle_oven(data):
         game_state["oven_timer_start"] = time.time()
         socketio.emit('oven_toggled', {"state": "on"}, room=room)
         socketio.emit('game_state', game_state, room=room)
+
     elif desired_state == "off":
         if not game_state["oven_on"]:
             emit('oven_error', {"message": "Oven is already off."}, room=request.sid)
             return
-        # Turn oven off, compute final baking time for pizzas
+
+        # Turn oven off and finalize pizzas
         elapsed = time.time() - game_state["oven_timer_start"]
         for pizza in game_state["oven"]:
             pizza["baking_time"] += elapsed
-        # Evaluate pizza outcomes
+
         pizzas_to_remove = []
         for pizza in game_state["oven"]:
             total_baking = pizza["baking_time"]
@@ -237,20 +247,20 @@ def toggle_oven(data):
                 pizza["status"] = "cooked"
                 game_state["completed_pizzas"].append(pizza)
                 pizzas_to_remove.append(pizza)
-            else:
-                # total_baking > 45
+            else:  # > 45
                 pizza["status"] = "burnt"
                 game_state["wasted_pizzas"].append(pizza)
                 pizzas_to_remove.append(pizza)
 
-        for pizza in pizzas_to_remove:
-            if pizza in game_state["oven"]:
-                game_state["oven"].remove(pizza)
+        for p in pizzas_to_remove:
+            if p in game_state["oven"]:
+                game_state["oven"].remove(p)
 
         game_state["oven_on"] = False
         game_state["oven_timer_start"] = None
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
         socketio.emit('game_state', game_state, room=room)
+
     else:
         emit('oven_error', {"message": "Invalid oven state requested."}, room=request.sid)
 
@@ -259,15 +269,16 @@ def on_start_round(data):
     room = player_group.get(request.sid, "default")
     game_state = group_games.get(room, new_game_state())
     logging.debug(f"Room {room} on_start_round: current round_duration = {game_state['round_duration']}")
+
     if game_state["current_phase"] != "waiting":
         return
 
-    # Transition to round
+    # Move to 'round' phase
     game_state["current_phase"] = "round"
     game_state["round_start_time"] = time.time()
     logging.debug(f"Round started at {game_state['round_start_time']} with duration {game_state['round_duration']}")
 
-    # Clear previous round state
+    # Clear old data
     game_state["prepared_ingredients"] = []
     game_state["built_pizzas"] = []
     game_state["oven"] = []
@@ -278,11 +289,11 @@ def on_start_round(data):
 
     socketio.emit('round_started', {
         "round": game_state["round"],
-        "duration":  game_state["round_duration"],
+        "duration": game_state["round_duration"],
         "start_time": game_state["round_start_time"]
     }, room=room)
 
-    # Start a separate thread that ends the round after the set duration
+    # Start a thread that ends the round after duration
     threading.Thread(target=round_timer, args=(game_state["round_duration"], room)).start()
 
 def round_timer(duration, room):
@@ -293,14 +304,12 @@ def end_round(room):
     game_state = group_games.get(room)
     if not game_state:
         return
+
     game_state["current_phase"] = "debrief"
     leftover_ingredients = len(game_state["prepared_ingredients"])
-
-    # Count unsold pizzas: pizzas still built or in the oven
     unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
     unsold_count = len(unsold_pizzas)
 
-    # Calculate score
     score = (
         len(game_state["completed_pizzas"]) * 10
         - len(game_state["wasted_pizzas"]) * 10
@@ -317,7 +326,7 @@ def end_round(room):
     }
     socketio.emit('round_ended', result, room=room)
 
-    # Start a "debrief" timer (3 min, for example)
+    # Debrief (waiting) for 3 minutes, then reset
     threading.Thread(target=debrief_timer, args=(180, room)).start()
 
 def debrief_timer(duration, room):
@@ -325,7 +334,6 @@ def debrief_timer(duration, room):
     game_state = group_games.get(room)
     if not game_state:
         return
-    # Reset for next round
     game_state["current_phase"] = "waiting"
     game_state["prepared_ingredients"] = []
     game_state["built_pizzas"] = []
@@ -338,8 +346,6 @@ def debrief_timer(duration, room):
 
     socketio.emit('game_reset', game_state, room=room)
 
-# This background thread periodically broadcasts the "time_update" event
-# with the official roundTimeRemaining and ovenTime
-
+# Local dev only:
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=True,allow_unsafe_werkzeug=True)
