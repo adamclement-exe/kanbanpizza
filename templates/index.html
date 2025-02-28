@@ -57,6 +57,7 @@
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
       font-size: 1rem;
       color: #fff;
+      margin-right:4vw;
     }
   </style>
 </head>
@@ -66,14 +67,15 @@
 <header class="d-flex justify-content-between align-items-center">
   <h1 class="h3">🍕 Adam's Kanban Pizza Shop</h1>
   <div class="d-flex">
+        <!-- Oven container for oven timer -->
+    <div class="timer-container oven">
+      <span id="oven-timer" class="oven-timer">Oven Time: --</span>
+    </div>
     <!-- Stopwatch container for round timer -->
     <div class="timer-container stopwatch me-3">
       <span id="timer" class="timer">Round Time: --</span>
     </div>
-    <!-- Oven container for oven timer -->
-    <div class="timer-container oven">
-      <span id="oven-timer" class="oven-timer">Oven Time: --</span>
-    </div>
+
   </div>
 </header>
 
