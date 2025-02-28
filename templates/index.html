@@ -50,7 +50,6 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      text-align: center;
     }
     .timer-container.stopwatch {
       width: 150px;
@@ -63,10 +62,35 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      text-align: center;
     }
     .btn-custom {
       margin-right: 6px;
+    }
+    /* Emoji overlay styles */
+    .emoji-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 2rem;
+    }
+    .emoji-wrapper .emoji + .emoji {
+  transform: scale(0.6);
+}
+    .emoji {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    /* Tinting effects applied directly to the emoji */
+    .undercooked .emoji {
+      filter: sepia(1) hue-rotate(10deg) saturate(300%);
+    }
+    .burnt .emoji {
+      filter: grayscale(1) brightness(0.3);
+    }
+    .invalid .emoji {
+      filter: grayscale(1) contrast(1.2);
     }
   </style>
 </head>
@@ -76,7 +100,7 @@
       <h1 class="h3">🍕 Kanban Pizza</h1>
     </header>
 
-        <nav class="d-flex justify-content-between align-items-center mb-3">
+    <nav class="d-flex justify-content-between align-items-center mb-3">
       <!-- Left side: buttons -->
       <div>
         <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
@@ -122,19 +146,19 @@
             <h2>Pizza Status</h2>
             <div class="mb-2">
               <h5>Built Pizzas</h5>
-              <div id="built-pizzas" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="built-pizzas" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Oven</h5>
-              <div id="oven" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="oven" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Completed Pizzas</h5>
-              <div id="completed" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="completed" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
             <div class="mb-2">
               <h5>Wasted Pizzas</h5>
-              <div id="wasted" style="min-height: 5vh;border: solid #cccccc;"></div>
+              <div id="wasted" class="d-flex flex-wrap border p-2 mb-3"  style="min-height: 5vh; border: solid #cccccc;"></div>
             </div>
           </div>
         </div>
@@ -143,7 +167,7 @@
     </main>
   </div>
 
-  <!-- Instructions Modal (Optional) -->
+  <!-- Instructions Modal -->
   <div class="modal" tabindex="-1" id="modal">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -153,7 +177,31 @@
         </div>
         <div class="modal-body">
           <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
-          <!-- ... instructions content ... -->
+          <p><strong>How to Play:</strong></p>
+          <ul>
+            <li>Prepare ingredients by clicking the buttons (Base, Sauce, Ham, Pineapple).</li>
+            <li>Drag and drop shared ingredients into your Pizza Builder to assemble your pizza.</li>
+            <li>A valid pizza requires 1 base, 1 sauce and either 4 ham (for a bacon pizza) or 2 ham + 2 pineapple (for a pineapple pizza).</li>
+            <li>Submit your pizza once built. Valid pizzas will display with an emoji overlay:
+              <ul>
+                <li>🍕 + 🥓 for bacon pizzas</li>
+                <li>🍕 + 🍍 for pineapple pizzas</li>
+              </ul>
+            </li>
+            <li>Invalid pizzas show a 🍕 with a 🚫 overlay.</li>
+            <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
+            <li>After baking, pizzas are evaluated:
+              <ul>
+                <li><strong>Undercooked</strong> pizzas get a yellow tint.</li>
+                <li><strong>Burnt</strong> pizzas are tinted dark.</li>
+                <li><strong>Invalid</strong> pizzas receive a distinct tint.</li>
+              </ul>
+            </li>
+          </ul>
+          <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
         </div>
       </div>
     </div>
@@ -174,26 +222,12 @@
           <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
           <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
           <hr>
-          <p>
-            <em class="text-muted">
-              In this round, did work pile up at any stage? How could you manage it better?
-            </em>
-          </p>
-          <p>
-            <em class="text-muted">
-              In this round, did visualizing your work help you spot any bottlenecks?
-            </em>
-          </p>
-           <p>
-            <em class="text-muted">
-               “Stop starting and start finishing.” - David J. Anderson
-            </em>
-          </p>
-           <p>
-            <em class="text-muted">
-               What do you think David meant by this?
-            </em>
-          </p>
+          <p><em class="text-muted">
+            Reflect on the round: How did your ingredient choices and oven timing affect your pizza’s outcome?
+          </em></p>
+          <p><em class="text-muted">
+            Embrace change and collaboration – as the Agile Manifesto encourages, adapt and continuously improve!
+          </em></p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
@@ -218,18 +252,17 @@
       "pineapple": "🍍"
     };
 
-    // 1) Poll the server for times every second
+    // Poll the server for times every second
     setInterval(() => {
       socket.emit('time_request');
     }, 1000);
 
-    // 2) When server responds with time_response, update the UI
     socket.on('time_response', function(data) {
       document.getElementById("timer").innerText = "Round Time: " + data.roundTimeRemaining + " sec";
       document.getElementById("oven-timer").innerText = "Oven Time: " + data.ovenTime + " sec";
     });
 
-    // Connect & join
+    // Connect & join room
     socket.on('connect', function() {
       myRoom = prompt("Enter your room number:") || "default";
       socket.emit('join', { room: myRoom });
@@ -241,7 +274,7 @@
     document.getElementById("instructions-btn").addEventListener("click", () => modal.show());
     document.getElementById("modal-close").addEventListener("click", () => modal.hide());
 
-    // DnD logic
+    // Drag & Drop logic
     function allowDrop(ev) { ev.preventDefault(); }
     function drag(ev) {
       ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
@@ -280,7 +313,7 @@
       updateBuilderDisplay();
     });
 
-    // Listen for game_state to render the board
+    // Render game state updates
     socket.on('game_state', function(state) {
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
@@ -305,12 +338,30 @@
         poolDiv.appendChild(div);
       });
 
-      // Built pizzas
+      // Helper function to render a pizza
+      function renderPizza(pizza, extraLabel) {
+        var div = document.createElement("div");
+        if (pizza.emoji) {
+          div.innerHTML = pizza.emoji;
+        } else {
+          div.innerText = "Pizza " + pizza.pizza_id;
+        }
+        if (extraLabel) {
+          var label = document.createElement("span");
+          label.innerText = extraLabel;
+          div.appendChild(label);
+        }
+        if (pizza.status) {
+          div.classList.add(pizza.status);
+        }
+        return div;
+      }
+
+      // Render Built Pizzas
       var builtDiv = document.getElementById("built-pizzas");
       builtDiv.innerHTML = "";
       state.built_pizzas.forEach(function(pizza) {
-        var div = document.createElement("div");
-        div.innerText = "Pizza " + pizza.pizza_id;
+        var div = renderPizza(pizza, "");
         var btn = document.createElement("button");
         btn.className = "btn btn-sm btn-outline-primary ms-2";
         btn.innerText = "Move to Oven";
@@ -321,30 +372,27 @@
         builtDiv.appendChild(div);
       });
 
-      // Oven
+      // Render Oven pizzas as emoji with a (baking) label
       var ovenDiv = document.getElementById("oven");
       ovenDiv.innerHTML = "";
       state.oven.forEach(function(pizza) {
-        var div = document.createElement("div");
-        div.innerText = "Pizza " + pizza.pizza_id + " (baking)";
+        var div = renderPizza(pizza, " (baking)");
         ovenDiv.appendChild(div);
       });
 
-      // Completed
+      // Render Completed Pizzas
       var compDiv = document.getElementById("completed");
       compDiv.innerHTML = "";
       state.completed_pizzas.forEach(function(pizza) {
-        var div = document.createElement("div");
-        div.innerText = "Pizza " + pizza.pizza_id + " completed";
+        var div = renderPizza(pizza, " completed");
         compDiv.appendChild(div);
       });
 
-      // Wasted
+      // Render Wasted Pizzas (undercooked, burnt, invalid)
       var wastedDiv = document.getElementById("wasted");
       wastedDiv.innerHTML = "";
       state.wasted_pizzas.forEach(function(pizza) {
-        var div = document.createElement("div");
-        div.innerText = "Pizza " + pizza.pizza_id + " " + pizza.status;
+        var div = renderPizza(pizza, "");
         wastedDiv.appendChild(div);
       });
     });
@@ -379,7 +427,7 @@
       }
     });
 
-    // Errors & status
+    // Error and status messages
     socket.on('ingredient_prepared', function(item) {
       document.getElementById("messages").innerText =
         "Ingredient prepared: " + (ingredientEmoji[item.type] || item.type);
@@ -401,7 +449,7 @@
         (data.state === "on") ? "Oven turned ON." : "Oven turned OFF.";
     });
 
-    // Buttons
+    // Button events
     document.getElementById("oven-on").addEventListener("click", function() {
       socket.emit('toggle_oven', { state: "on" });
     });
