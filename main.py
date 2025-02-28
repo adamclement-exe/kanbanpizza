@@ -247,23 +247,36 @@ def round_timer(duration, room):
     time.sleep(duration)
     end_round(room)
 
+
 def end_round(room):
     game_state = group_games[room]
     game_state["current_phase"] = "debrief"
     leftover_ingredients = len(game_state["prepared_ingredients"])
+
+    # Count unsold pizzas: pizzas still built and still in the oven
+    unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
+    unsold_count = len(unsold_pizzas)
+
+    # Optionally, log the unsold pizzas in the game state for later reference
+    game_state["unsold_pizzas"] = unsold_pizzas
+
+    # Calculate score: add penalty of -5 per unsold pizza
     score = (
-        len(game_state["completed_pizzas"]) * 10
-        - len(game_state["wasted_pizzas"]) * 10
-        - leftover_ingredients * 1
+            len(game_state["completed_pizzas"]) * 10
+            - len(game_state["wasted_pizzas"]) * 10
+            - unsold_count * 5
+            - leftover_ingredients * 1
     )
     result = {
         "completed_pizzas_count": len(game_state["completed_pizzas"]),
         "wasted_pizzas_count": len(game_state["wasted_pizzas"]),
+        "unsold_pizzas_count": unsold_count,
         "ingredients_left_count": leftover_ingredients,
         "score": score
     }
     socketio.emit('round_ended', result, room=room)
-    threading.Thread(target=debrief_timer, args=(60, room)).start()
+    threading.Thread(target=debrief_timer, args=(180, room)).start()
+
 
 def debrief_timer(duration, room):
     time.sleep(duration)
