@@ -36,6 +36,7 @@ def new_game_state():
 
 @app.route('/')
 def index():
+    # Renders the updated index.html (which includes the new Debrief Modal)
     return render_template('index.html')
 
 @socketio.on('connect')
@@ -249,10 +250,16 @@ def round_timer(duration, room):
 def end_round(room):
     game_state = group_games[room]
     game_state["current_phase"] = "debrief"
-    score = len(game_state["completed_pizzas"]) * 10 - len(game_state["wasted_pizzas"]) * 10 - len(game_state["prepared_ingredients"]) * 1
+    leftover_ingredients = len(game_state["prepared_ingredients"])
+    score = (
+        len(game_state["completed_pizzas"]) * 10
+        - len(game_state["wasted_pizzas"]) * 10
+        - leftover_ingredients * 1
+    )
     result = {
         "completed_pizzas_count": len(game_state["completed_pizzas"]),
         "wasted_pizzas_count": len(game_state["wasted_pizzas"]),
+        "ingredients_left_count": leftover_ingredients,
         "score": score
     }
     socketio.emit('round_ended', result, room=room)
