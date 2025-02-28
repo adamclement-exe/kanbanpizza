@@ -375,7 +375,7 @@
       var ovenDiv = document.getElementById("oven");
       ovenDiv.innerHTML = "";
       state.oven.forEach(function(pizza) {
-        var div = renderPizza(pizza, " (baking)");
+        var div = renderPizza(pizza, " ");
         ovenDiv.appendChild(div);
       });
 
@@ -383,7 +383,7 @@
       var compDiv = document.getElementById("completed");
       compDiv.innerHTML = "";
       state.completed_pizzas.forEach(function(pizza) {
-        var div = renderPizza(pizza, " completed");
+        var div = renderPizza(pizza, " ");
         compDiv.appendChild(div);
       });
 
