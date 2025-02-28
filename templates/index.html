@@ -257,8 +257,8 @@
     }, 1000);
 
     socket.on('time_response', function(data) {
-      document.getElementById("timer").innerText = "Round Time: <br>" + data.roundTimeRemaining + " sec";
-      document.getElementById("oven-timer").innerText = "Oven Time: <br>" + data.ovenTime + " sec";
+      document.getElementById("timer").innerText = "Round Time: \n" + data.roundTimeRemaining + " sec";
+      document.getElementById("oven-timer").innerText = "Oven Time: \n" + data.ovenTime + " sec";
     });
 
     // Connect & join room
