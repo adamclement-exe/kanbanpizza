@@ -11,6 +11,29 @@ app.config['SECRET_KEY'] = 'secret!'
 async_mode = None
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
 
+
+def time_update_thread():
+    while True:
+        socketio.sleep(1)  # once per second
+        for room, game_state in group_games.items():
+            roundTimeRemaining = 0
+            ovenTime = 0
+            if game_state["current_phase"] == "round" and game_state["round_start_time"]:
+                elapsed = time.time() - game_state["round_start_time"]
+                # how much time is left in the round
+                left = game_state["round_duration"] - elapsed
+                roundTimeRemaining = max(0, int(left))
+            if game_state["oven_on"] and game_state["oven_timer_start"]:
+                # how long has the oven been on
+                ovenTime = int(time.time() - game_state["oven_timer_start"])
+
+            socketio.emit("time_update", {
+                "roundTimeRemaining": roundTimeRemaining,
+                "ovenTime": ovenTime
+            }, room=room)
+
+
+socketio.start_background_task(time_update_thread)
 # Global dictionaries for room game states and mapping player session IDs to their room
 group_games = {}
 player_group = {}
@@ -317,30 +340,6 @@ def debrief_timer(duration, room):
 
 # This background thread periodically broadcasts the "time_update" event
 # with the official roundTimeRemaining and ovenTime
-def time_update_thread():
-    while True:
-        socketio.sleep(1)  # once per second
-        for room, game_state in group_games.items():
-            roundTimeRemaining = 0
-            ovenTime = 0
-            if game_state["current_phase"] == "round" and game_state["round_start_time"]:
-                elapsed = time.time() - game_state["round_start_time"]
-                # how much time is left in the round
-                left = game_state["round_duration"] - elapsed
-                roundTimeRemaining = max(0, int(left))
-            if game_state["oven_on"] and game_state["oven_timer_start"]:
-                # how long has the oven been on
-                ovenTime = int(time.time() - game_state["oven_timer_start"])
-
-            socketio.emit("time_update", {
-                "roundTimeRemaining": roundTimeRemaining,
-                "ovenTime": ovenTime
-            }, room=room)
 
 if __name__ == '__main__':
-    # Start the time update thread
-    socketio.start_background_task(time_update_thread)
-    # Optionally you can remove sync_thread or keep it if you want, but it's not needed now
-    # because we have time_update_thread sending the actual times.
-
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
