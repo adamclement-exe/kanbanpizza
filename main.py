@@ -160,24 +160,49 @@ def on_build_pizza(data):
 
     pizza_id = str(uuid.uuid4())[:8]
     if not valid:
+        # Invalid pizza: add a no entry sign overlay (🍕 with 🚫)
         pizza = {
             "pizza_id": pizza_id,
             "team": room,
             "built_at": time.time(),
             "baking_time": 0,
-            "status": "incomplete"
+            "status": "invalid",
+            "emoji": (
+                '<div class="emoji-wrapper">'
+                '<span class="emoji">🍕</span>'
+                '<span class="emoji">🚫</span>'
+                '</div>'
+            )
         }
         game_state["wasted_pizzas"].append(pizza)
         socketio.emit('build_error', {"message": "Invalid combo: Wasted as incomplete."}, room=request.sid)
         socketio.emit('game_state', game_state, room=room)
         return
 
+    # Valid pizza: assign overlay based on the ingredients
     pizza = {
         "pizza_id": pizza_id,
         "team": room,
         "built_at": time.time(),
         "baking_time": 0
     }
+    if counts["ham"] == 4:
+        # Bacon pizza: 🍕 + 🥓
+        pizza["emoji"] = (
+            '<div class="emoji-wrapper">'
+            '<span class="emoji">🍕</span>'
+            '<span class="emoji">🥓</span>'
+            '</div>'
+        )
+    elif counts["ham"] == 2 and counts["pineapple"] == 2:
+        # Pineapple pizza: 🍕 + 🍍
+        pizza["emoji"] = (
+            '<div class="emoji-wrapper">'
+            '<span class="emoji">🍕</span>'
+            '<span class="emoji">🍍</span>'
+            '</div>'
+        )
+
     game_state["built_pizzas"].append(pizza)
     socketio.emit('pizza_built', pizza, room=room)
     socketio.emit('game_state', game_state, room=room)
