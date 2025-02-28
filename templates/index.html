@@ -73,22 +73,26 @@
 <body>
   <div class="container game-container">
     <header class="d-flex justify-content-between align-items-center">
-      <h1 class="h3">🍕 Kanban Pizza (Polling Edition)</h1>
-      <div class="d-flex">
-        <div class="timer-container oven">
+      <h1 class="h3">🍕 Kanban Pizza</h1>
+    </header>
+
+        <nav class="d-flex justify-content-between align-items-center mb-3">
+      <!-- Left side: buttons -->
+      <div>
+        <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
+        <button id="oven-on" class="btn btn-success btn-custom">Turn Oven On</button>
+        <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
+        <button id="instructions-btn" class="btn btn-secondary btn-custom">Instructions</button>
+      </div>
+      <!-- Right side: timers -->
+      <div class="d-flex align-items-center">
+        <div class="timer-container oven me-3">
           <span id="oven-timer" class="oven-timer">Oven Time: --</span>
         </div>
-        <div class="timer-container stopwatch me-3">
+        <div class="timer-container stopwatch">
           <span id="timer" class="timer">Round Time: --</span>
         </div>
       </div>
-    </header>
-
-    <nav class="mb-3">
-      <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
-      <button id="oven-on" class="btn btn-success btn-custom">Turn Oven On</button>
-      <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
-      <button id="instructions-btn" class="btn btn-secondary btn-custom">Instructions</button>
     </nav>
 
     <main>
@@ -169,6 +173,27 @@
           <p><strong>Unsold Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
           <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
           <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
+          <hr>
+          <p>
+            <em class="text-muted">
+              In this round, did work pile up at any stage? How could you manage it better?
+            </em>
+          </p>
+          <p>
+            <em class="text-muted">
+              In this round, did visualizing your work help you spot any bottlenecks?
+            </em>
+          </p>
+           <p>
+            <em class="text-muted">
+               “Stop starting and start finishing.” - David J. Anderson
+            </em>
+          </p>
+           <p>
+            <em class="text-muted">
+               What do you think David meant by this?
+            </em>
+          </p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
