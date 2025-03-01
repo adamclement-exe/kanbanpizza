@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🍕Kanban Pizza (Polling Edition)</title>
+  <title>🍕Kanban Pizza</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Google Fonts: Orbitron for the digital look -->
@@ -183,29 +183,40 @@
           <button type="button" class="btn-close" id="modal-close" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
-          <p><strong>How to Play:</strong></p>
-          <ul>
-            <li>Prepare ingredients by clicking the buttons (Base, Sauce, Ham, Pineapple).</li>
-            <li>Drag and drop shared ingredients into your Pizza Builder to assemble your pizza.</li>
-            <li>A valid pizza requires 1 base, 1 sauce and either 4 ham (for a bacon pizza) or 2 ham + 2 pineapple (for a pineapple pizza).</li>
-            <li>Submit your pizza once built. Valid pizzas will display with an emoji overlay:
-              <ul>
-                <li>🍕 + 🥓 for bacon pizzas</li>
-                <li>🍕 + 🍍 for pineapple pizzas</li>
-              </ul>
-            </li>
-            <li>Invalid pizzas show a 🍕 with a 🚫 overlay.</li>
-            <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
-            <li>After baking, pizzas are evaluated:
-              <ul>
-                <li><strong>Undercooked</strong> pizzas get a yellow tint.</li>
-                <li><strong>Burnt</strong> pizzas are tinted dark.</li>
-                <li><strong>Invalid</strong> pizzas receive a distinct tint.</li>
-              </ul>
-            </li>
-          </ul>
-          <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
+          <h2>🍕 Kanban Pizza</h2>
+<p><strong>Oven Time:</strong> 0 sec</p>
+<p><strong>Round Time:</strong> 0 sec</p>
+
+<p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
+
+<p><strong>How to Play Round 1:</strong></p>
+<ul>
+    <li>Prepare ingredients by clicking the buttons (Base, Sauce, Ham, Pineapple). This ingredients pool is shared by the whole room.</li>
+    <li>Drag and drop ingredients into your Pizza Builder to assemble your pizza. In this round you only have access to your own pizza builder area.</li>
+    <li>A valid pizza requires:
+        <ul>
+            <li>1 base</li>
+            <li>1 sauce</li>
+            <li>Either 4 ham (for a bacon pizza) or 2 ham + 2 pineapple (for a pineapple pizza).</li>
+        </ul>
+    </li>
+    <li>Submit your pizza once built. Valid pizzas will display with an emoji overlay:
+        <ul>
+            <li>🍕 + 🥓 for bacon pizzas</li>
+            <li>🍕 + 🍍 for pineapple pizzas</li>
+        </ul>
+    </li>
+    <li>Invalid pizzas show a 🍕 with a 🚫 overlay.</li>
+    <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
+    <li>After baking, pizzas are evaluated:
+        <ul>
+            <li><strong>Undercooked</strong> (&lt;30 seconds) pizzas get a yellow tint.</li>
+            <li><strong>Burnt</strong> (&gt;45 seconds) pizzas are tinted dark.</li>
+        </ul>
+    </li>
+</ul>
+
+<p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
