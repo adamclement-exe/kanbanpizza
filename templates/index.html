@@ -20,7 +20,7 @@
       color: #333;
       min-height: 100vh;
       background: url('static/tile3.webp') center center;
-      background-size: 240px 240px;
+      background-size: 90px 90px;
   font-family: "Roboto Condensed", serif;
   font-optical-sizing: auto;
     }
@@ -207,14 +207,14 @@
               <button onclick="prepareIngredient('pineapple')" class="btn btn-outline-warning btn-custom">Chop Pineapple</button>
             </div>
             <h4>Shared Ingredients</h4>
-            <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;"></div>
+            <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;border: solid #4A4A4A!important;"></div>
 
             <h4>Your Pizza Builder</h4>
             <div id="pizza-builder"
                  ondrop="dropToBuilder(event)"
                  ondragover="allowDrop(event)"
                  class="d-flex flex-wrap border p-2 mb-3"
-                 style="min-height: 100px;"></div>
+                 style="min-height: 100px;border: solid #4A4A4A!important;"></div>
             <button id="submit-pizza" class="btn btn-primary btn-custom">Submit Pizza</button>
           </div>
 
@@ -222,19 +222,19 @@
             <h2>Pizza Status</h2>
             <div class="mb-2">
               <h5>Built Pizzas</h5>
-              <div id="built-pizzas" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="built-pizzas" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
             </div>
             <div class="mb-2">
               <h5>Oven</h5>
-              <div id="oven" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="oven" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
             </div>
             <div class="mb-2">
               <h5>Completed Pizzas</h5>
-              <div id="completed" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="completed" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
             </div>
             <div class="mb-2">
               <h5>Wasted Pizzas</h5>
-              <div id="wasted" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #cccccc;"></div>
+              <div id="wasted" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
             </div>
           </div>
         </div>
