@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🍕Kanban Pizza</title>
+  <title>🍕 Kanban Pizza</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Google Fonts: Orbitron for the digital look -->
@@ -53,6 +53,13 @@
     }
     .ingredient {
       font-size: 2rem;
+      margin: 5px;
+      cursor: pointer;
+    }
+    /* Visual indicator for touch-selected ingredients */
+    .ingredient.selected {
+      border: 2px solid #007bff;
+      border-radius: 4px;
     }
     .timer-container {
       display: flex;
@@ -200,7 +207,7 @@
       <div class="modal-content">
         <div class="modal-header">
             <div class="col-md-6">
-          <h5 class="modal-title">WELCOME TO KANBAN PIZZA!</h5>
+          <h5 class="modal-title">🍕 WELCOME TO KANBAN PIZZA!</h5>
             </div>
             <div class="col-md-6">
               <form id="join-form">
@@ -211,8 +218,6 @@
                 <button type="submit" class="btn btn-primary">Join Room</button>
               </form>
             </div>
-
-
         </div>
         <div class="modal-body">
           <div class="row">
@@ -247,9 +252,7 @@
             </li>
           </ul>
           <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
-
             </div>
-
           </div>
         </div>
       </div>
@@ -337,6 +340,8 @@
     var socket = io();
     var myRoom = "";
     var builderIngredients = [];
+    // Global variable to store a touch-selected ingredient (for mobile)
+    var touchSelectedIngredient = null;
     var ingredientEmoji = {
       "base": "🟡",
       "sauce": "🍅",
@@ -356,8 +361,11 @@
 
     // On connect, show the room join modal
     socket.on('connect', function() {
-      var roomModal = new bootstrap.Modal(document.getElementById('roomModal'));
-      roomModal.show();
+        var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
+          backdrop: 'static',
+          keyboard: false
+        });
+        roomModal.show();
     });
 
     // Handle join form submission
@@ -376,13 +384,12 @@
     document.getElementById("instructions-btn").addEventListener("click", () => modal.show());
     document.getElementById("modal-close").addEventListener("click", () => modal.hide());
 
-    // Drag & Drop logic
+    // Drag & Drop logic for desktop
     function allowDrop(ev) { ev.preventDefault(); }
     function drag(ev) {
       ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
       ev.dataTransfer.setData("ingredient_type", ev.target.dataset.type);
     }
-    function dropFromPool(ev) { ev.preventDefault(); }
     function dropToBuilder(ev) {
       ev.preventDefault();
       var ingredient_id = ev.dataTransfer.getData("ingredient_id");
@@ -414,6 +421,26 @@
       updateBuilderDisplay();
     });
 
+    // Mobile alternative: touch events
+    if ('ontouchstart' in window) {
+      // Add touch event listener on the pizza builder to "drop" the selected ingredient
+      var builderDiv = document.getElementById("pizza-builder");
+      builderDiv.addEventListener("touchend", function(ev) {
+          ev.preventDefault();
+          if (touchSelectedIngredient) {
+              socket.emit('take_ingredient', { ingredient_id: touchSelectedIngredient.id });
+              builderIngredients.push({ id: touchSelectedIngredient.id, type: touchSelectedIngredient.type });
+              updateBuilderDisplay();
+              // Remove visual selection from any ingredient in the pool
+              var selectedItems = document.querySelectorAll('.ingredient.selected');
+              selectedItems.forEach(function(el) {
+                el.classList.remove('selected');
+              });
+              touchSelectedIngredient = null;
+          }
+      });
+    }
+
     // Render game state updates
     socket.on('game_state', function(state) {
       if (state.current_phase === "round") {
@@ -434,6 +461,19 @@
         div.dataset.type = item.type;
         div.innerText = ingredientEmoji[item.type] || item.type;
         div.addEventListener("dragstart", drag);
+        // If touch is supported, add a touchstart listener to select the ingredient
+        if ('ontouchstart' in window) {
+          div.addEventListener("touchstart", function(ev) {
+            ev.preventDefault();
+            // Remove selection from any previously selected ingredient
+            var previouslySelected = document.querySelectorAll('.ingredient.selected');
+            previouslySelected.forEach(function(el) {
+              el.classList.remove('selected');
+            });
+            touchSelectedIngredient = { id: item.id, type: item.type };
+            div.classList.add("selected");
+          });
+        }
         poolDiv.appendChild(div);
       });
       function renderPizza(pizza, extraLabel) {
