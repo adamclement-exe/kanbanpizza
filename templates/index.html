@@ -18,8 +18,8 @@
       background: #f8f9fa;
       color: #333;
       min-height: 100vh;
-background-color: #DFDBE5;
-background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm20 0a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM10 37a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm10-17h20v20H20V20zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z' fill='%239C92AC' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+      background-color: #DFDBE5;
+      background: url('static/tile8.png') repeat center center;
       font-family: "Roboto Condensed", serif;
       font-optical-sizing: auto;
     }
@@ -109,20 +109,21 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
     .btn-custom {
       margin-right: 6px;
     }
-    .emoji-wrapper {
+.emoji-wrapper {
       position: relative;
       display: inline-block;
       width: 2.5rem;
       height: 2.5rem;
       font-size: 2rem;
     }
-    .emoji-wrapper .emoji + .emoji {
-      transform: scale(0.6);
-    }
-    .emoji {
+    .emoji-wrapper .emoji {
       position: absolute;
       top: 0;
       left: 0;
+    }
+    .emoji-wrapper .emoji:not(:first-child) {
+      transform: scale(0.6);
+      left: -0.2rem; /* Adjust to overlay neatly */
     }
     .undercooked .emoji {
       filter: sepia(1) hue-rotate(10deg) saturate(300%);
@@ -133,7 +134,7 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
     .burnt .emoji {
       filter: grayscale(1) brightness(0.3);
     }
-    .invalid .emoji {
+    .invalid .emoji, .unmatched .emoji {
       filter: grayscale(1) contrast(1.2);
     }
     #messages {
@@ -163,6 +164,36 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       min-height: 100px;
       border: 1px dashed #4A4A4A;
       padding: 10px;
+    }
+    .order-card {
+      background-color: #e9ecef;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin: 5px;
+      width: 180px;
+      height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .order-id {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .order-ingredients {
+      margin: 5px 0;
+      font-size: 1rem;
+    }
+    .order-emoji {
+      font-size: 1.5rem;
+    }
+    #orders-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
     }
   </style>
 </head>
@@ -196,6 +227,10 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
     </nav>
 
     <main>
+      <div id="customer-orders" class="mb-3" style="display: none;">
+        <h4>Customer Orders (<span id="order-count">0</span>)</h4>
+        <div id="orders-list" class="d-flex flex-wrap border p-2" style="min-height: 50px; border: solid #4A4A4A!important; overflow-y: auto; max-height: 200px;"></div>
+      </div>
       <div id="game-area" class="mb-3" style="display: none;">
         <div class="row">
           <div class="col-md-6">
@@ -299,6 +334,23 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
                 <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
                 <li>Collaboration is key—work together to optimize pizza production!</li>
               </ul>
+              <p><strong>How to Play Round 3:</strong></p>
+              <ul>
+                <li>Use the Shared Pizza Builders to collaborate, as in Round 2.</li>
+                <li>50 customer orders arrive throughout the round, specifying exact ingredient combinations:</li>
+                <ul>
+                  <li><strong>Ham:</strong> 1 base, 1 sauce, 4 ham</li>
+                  <li><strong>Pineapple:</strong> 1 base, 1 sauce, 4 pineapple</li>
+                  <li><strong>Ham & Pineapple:</strong> 1 base, 1 sauce, 2 ham, 2 pineapple</li>
+                  <li><strong>Light Ham:</strong> 1 base, 1 sauce, 1 ham</li>
+                  <li><strong>Light Pineapple:</strong> 1 base, 1 sauce, 1 pineapple</li>
+                  <li><strong>Plain:</strong> 1 base, 1 sauce</li>
+                  <li><strong>Heavy Ham:</strong> 1 base, 1 sauce, 6 ham</li>
+                  <li><strong>Heavy Pineapple:</strong> 1 base, 1 sauce, 6 pineapple</li>
+                </ul>
+                <li>Build pizzas to match these orders exactly. Unmatched pizzas are wasted.</li>
+                <li>Orders arrive over time, with the last one at least 45 seconds before the round ends.</li>
+              </ul>
               <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
             </div>
           </div>
@@ -350,6 +402,23 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
             <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
             <li>Collaboration is key—work together to optimize pizza production!</li>
           </ul>
+          <p><strong>How to Play Round 3:</strong></p>
+          <ul>
+            <li>Use the Shared Pizza Builders to collaborate, as in Round 2.</li>
+            <li>50 customer orders arrive throughout the round, specifying exact ingredient combinations:</li>
+            <ul>
+              <li><strong>Ham:</strong> 1 base, 1 sauce, 4 ham</li>
+              <li><strong>Pineapple:</strong> 1 base, 1 sauce, 4 pineapple</li>
+              <li><strong>Ham & Pineapple:</strong> 1 base, 1 sauce, 2 ham, 2 pineapple</li>
+              <li><strong>Light Ham:</strong> 1 base, 1 sauce, 1 ham</li>
+              <li><strong>Light Pineapple:</strong> 1 base, 1 sauce, 1 pineapple</li>
+              <li><strong>Plain:</strong> 1 base, 1 sauce</li>
+              <li><strong>Heavy Ham:</strong> 1 base, 1 sauce, 6 ham</li>
+              <li><strong>Heavy Pineapple:</strong> 1 base, 1 sauce, 6 pineapple</li>
+            </ul>
+            <li>Build pizzas to match these orders exactly. Unmatched pizzas are wasted.</li>
+            <li>Orders arrive over time, with the last one at least 45 seconds before the round ends.</li>
+          </ul>
           <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
         </div>
         <div class="modal-footer">
@@ -368,8 +437,11 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
         <div class="modal-body" id="debriefModalBody">
           <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
           <p><strong>Pizzas Wasted:</strong> <span id="debrief-pizzas-wasted">0</span></p>
-          <p><strong>Unsold Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
+          <p><strong>Uncooked Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
           <p><strong>Leftover Ingredients:</strong> <span id="debrief-ingredients-left">0</span></p>
+          <p id="fulfilled-orders" style="display: none;"><strong>Fulfilled Orders:</strong> <span id="debrief-fulfilled-orders">0</span></p>
+          <p id="remaining-orders" style="display: none;"><strong>Remaining Orders:</strong> <span id="debrief-remaining-orders">0</span></p>
+          <p id="unmatched-pizzas" style="display: none;"><strong>Unmatched Pizzas:</strong> <span id="debrief-unmatched-pizzas">0</span></p>
           <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
           <hr>
           <p><em class="text-muted">
@@ -388,13 +460,23 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
   <script>
     var socket = io();
     var myRoom = "";
-    var builderIngredients = [];  // For Round 1 only
+    var builderIngredients = [];
     var touchSelectedIngredient = null;
     var ingredientEmoji = {
       "base": "🟡",
       "sauce": "🔴",
       "ham": "🥓",
       "pineapple": "🍍"
+    };
+    var orderEmoji = {
+      "ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
+      "pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>',
+      "ham & pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span><span class="emoji">🍍</span></div>',
+      "light ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
+      "light pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>',
+      "plain": '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>',
+      "heavy ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
+      "heavy pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>'
     };
 
     function updateMessage(text) {
@@ -478,7 +560,7 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       container.innerHTML = "";
       Object.keys(players).forEach(function(sid, index) {
         var colDiv = document.createElement("div");
-        colDiv.classList.add("col-md-4"); // 3 columns per row
+        colDiv.classList.add("col-md-4");
         var builderDiv = document.createElement("div");
         builderDiv.classList.add("pizza-builder-container");
         builderDiv.innerHTML = `<h5>Builder #${index + 1}</h5>`;
@@ -551,7 +633,6 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       state = newState;
       console.log("Game State:", state);
 
-      // Update game area and start button visibility based on phase
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
@@ -560,10 +641,47 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
         document.getElementById("start-round").style.display = "inline-block";
       }
 
-      // Update builder visibility
       updateVisibility();
 
-      // Update prepared ingredients pool
+      var ordersDiv = document.getElementById("customer-orders");
+      var ordersList = document.getElementById("orders-list");
+      var orderCount = document.getElementById("order-count");
+      if (state.round === 3 && state.current_phase === "round") {
+        ordersDiv.style.display = "block";
+        ordersList.innerHTML = "";
+        state.customer_orders.forEach(function(order) {
+          var card = document.createElement("div");
+          card.classList.add("order-card");
+          card.setAttribute("data-order-id", order.id);
+
+          var idDiv = document.createElement("div");
+          idDiv.classList.add("order-id");
+          idDiv.innerText = `Order: ${order.id.slice(0, 6)}`;
+          card.appendChild(idDiv);
+
+          var ingredientsDiv = document.createElement("div");
+          ingredientsDiv.classList.add("order-ingredients");
+          var ingredientsText = [];
+          if (order.ingredients.base > 0) ingredientsText.push(`${ingredientEmoji["base"]}x${order.ingredients.base}`);
+          if (order.ingredients.sauce > 0) ingredientsText.push(`${ingredientEmoji["sauce"]}x${order.ingredients.sauce}`);
+          if (order.ingredients.ham > 0) ingredientsText.push(`${ingredientEmoji["ham"]}x${order.ingredients.ham}`);
+          if (order.ingredients.pineapple > 0) ingredientsText.push(`${ingredientEmoji["pineapple"]}x${order.ingredients.pineapple}`);
+          ingredientsDiv.innerText = ingredientsText.join(" ");
+          card.appendChild(ingredientsDiv);
+
+          var emojiDiv = document.createElement("div");
+          emojiDiv.classList.add("order-emoji");
+          emojiDiv.innerHTML = orderEmoji[order.type] || '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>';
+          card.appendChild(emojiDiv);
+
+          ordersList.appendChild(card);
+        });
+        orderCount.innerText = state.customer_orders.length;
+      } else {
+        ordersDiv.style.display = "none";
+        orderCount.innerText = "0";
+      }
+
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
       state.prepared_ingredients.forEach(function(item) {
@@ -649,15 +767,13 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       const builderHeading = document.getElementById("builder-heading");
 
       if (state.round >= 1 && state.current_phase === "debrief" && state.round < state.max_rounds) {
-        // Debrief after Round 1 (leading to Round 2)
-        console.log("Debrief after Round 1: Showing shared builders");
+        console.log("Debrief after Round 1 or 2: Showing shared builders");
         pizzaBuilder.style.display = "none";
         submitPizza.style.display = "none";
         buildersContainer.style.display = "flex";
         builderHeading.innerText = "Shared Pizza Builders";
         renderPizzaBuilders(state.players);
       } else if (state.round > 1) {
-        // Round 2 or beyond
         console.log("Round 2+: Showing shared builders");
         pizzaBuilder.style.display = "none";
         submitPizza.style.display = "none";
@@ -667,7 +783,6 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
           renderPizzaBuilders(state.players);
         }
       } else {
-        // Round 1 or waiting
         console.log("Round 1 or waiting: Showing pizza-builder");
         pizzaBuilder.style.display = "flex";
         submitPizza.style.display = "inline-block";
@@ -683,6 +798,7 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
     socket.on('round_started', function(data) {
       state.round = data.round;
       state.current_phase = "round";
+      state.customer_orders = data.customer_orders;
       updateMessage("Round " + data.round + " started. Duration: " + data.duration + " sec");
       document.getElementById("game-area").style.display = "block";
       document.getElementById("start-round").style.display = "none";
@@ -691,7 +807,7 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       if (debriefModal) {
         debriefModal.hide();
       }
-      updateVisibility();
+      updateGameState(state);
     });
 
     socket.on('round_ended', function(result) {
@@ -700,9 +816,20 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       document.getElementById("debrief-pizzas-unsold").innerText = result.unsold_pizzas_count;
       document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
       document.getElementById("debrief-score").innerText = result.score;
+      if (state.round === 3) {
+        document.getElementById("fulfilled-orders").style.display = "block";
+        document.getElementById("remaining-orders").style.display = "block";
+        document.getElementById("unmatched-pizzas").style.display = "block";
+        document.getElementById("debrief-fulfilled-orders").innerText = result.fulfilled_orders_count || 0;
+        document.getElementById("debrief-remaining-orders").innerText = result.remaining_orders_count || 0;
+        document.getElementById("debrief-unmatched-pizzas").innerText = result.unmatched_pizzas_count || 0;
+      } else {
+        document.getElementById("fulfilled-orders").style.display = "none";
+        document.getElementById("remaining-orders").style.display = "none";
+        document.getElementById("unmatched-pizzas").style.display = "none";
+      }
       var debriefModal = new bootstrap.Modal(document.getElementById('debriefModal'), {});
       debriefModal.show();
-      // Update visibility immediately to reflect debrief state
       updateVisibility();
     });
 
@@ -745,6 +872,45 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
     socket.on('clear_shared_builder', function(data) {
       renderPizzaBuilders(state.players);
     });
+    socket.on('new_order', function(order) {
+      updateMessage("New order received: " + order.type);
+      state.customer_orders.push(order);
+      var ordersList = document.getElementById("orders-list");
+      var card = document.createElement("div");
+      card.classList.add("order-card");
+      card.setAttribute("data-order-id", order.id);
+
+      var idDiv = document.createElement("div");
+      idDiv.classList.add("order-id");
+      idDiv.innerText = `Order: ${order.id.slice(0, 6)}`;
+      card.appendChild(idDiv);
+
+      var ingredientsDiv = document.createElement("div");
+      ingredientsDiv.classList.add("order-ingredients");
+      var ingredientsText = [];
+      if (order.ingredients.base > 0) ingredientsText.push(`${ingredientEmoji["base"]}x${order.ingredients.base}`);
+      if (order.ingredients.sauce > 0) ingredientsText.push(`${ingredientEmoji["sauce"]}x${order.ingredients.sauce}`);
+      if (order.ingredients.ham > 0) ingredientsText.push(`${ingredientEmoji["ham"]}x${order.ingredients.ham}`);
+      if (order.ingredients.pineapple > 0) ingredientsText.push(`${ingredientEmoji["pineapple"]}x${order.ingredients.pineapple}`);
+      ingredientsDiv.innerText = ingredientsText.join(" ");
+      card.appendChild(ingredientsDiv);
+
+      var emojiDiv = document.createElement("div");
+      emojiDiv.classList.add("order-emoji");
+      emojiDiv.innerHTML = orderEmoji[order.type] || '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>';
+      card.appendChild(emojiDiv);
+
+      ordersList.appendChild(card);
+      document.getElementById("order-count").innerText = state.customer_orders.length;
+    });
+    socket.on('order_fulfilled', function(data) {
+      updateMessage("Order fulfilled: " + data.order_id);
+      var orderElement = document.querySelector(`[data-order-id="${data.order_id}"]`);
+      if (orderElement) {
+        orderElement.remove();
+        document.getElementById("order-count").innerText = state.customer_orders.length;
+      }
+    });
 
     document.getElementById("oven-on").addEventListener("click", function() {
       socket.emit('toggle_oven', { state: "on" });
@@ -759,5 +925,7 @@ background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox=
       socket.disconnect();
     });
   </script>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a27b4b49d56a7b',t:'MTc0MDkzNTE1NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a2c42a6d451373',t:'MTc0MDkzODEzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
