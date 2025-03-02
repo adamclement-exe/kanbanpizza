@@ -1,10 +1,9 @@
 import eventlet
-eventlet.monkey_patch()  # Must be before other imports that use patched libraries
+eventlet.monkey_patch()
 
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
 import time
-import threading
 import uuid
 import logging
 import random
@@ -45,7 +44,7 @@ def index():
 
 @socketio.on('connect')
 def on_connect():
-    print("Client connected:", request.sid)
+    logging.info("Client connected: %s", request.sid)
 
 @socketio.on('join')
 def on_join(data):
@@ -58,7 +57,7 @@ def on_join(data):
         game_state["players"][request.sid] = {"builder_ingredients": []}
     join_room(room)
     socketio.emit('game_state', game_state, room=room)
-    print(f"Client {request.sid} joined room {room}")
+    logging.info("Client %s joined room %s", request.sid, room)
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -70,7 +69,7 @@ def on_disconnect():
             del game_state["players"][sid]
         del player_group[sid]
         socketio.emit('game_state', game_state, room=room)
-        print("Client disconnected:", sid)
+        logging.info("Client disconnected: %s", sid)
 
 @socketio.on('time_request')
 def on_time_request():
@@ -90,12 +89,25 @@ def on_time_request():
         if game_state["round"] == 3 and game_state["pending_orders"]:
             current_time = elapsed
             pending_orders = game_state["pending_orders"]
-            orders_to_deliver = [order for order in pending_orders if order["arrival_time"] <= current_time]
-            if orders_to_deliver:
+            orders_to_deliver = []
+            for order in pending_orders[:]:  # Copy to avoid modifying during iteration
+                if order["arrival_time"] <= current_time:
+                    orders_to_deliver.append(order)
+                if len(orders_to_deliver) >= 10:  # Batch size
+                    game_state["customer_orders"].extend(orders_to_deliver)
+                    for order in orders_to_deliver:
+                        game_state["pending_orders"].remove(order)
+                        socketio.emit('new_order', order, room=room)
+                        logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
+                    socketio.emit('game_state', game_state, room=room)
+                    orders_to_deliver = []
+                    eventlet.sleep(0)  # Yield to event loop
+            if orders_to_deliver:  # Handle remaining
                 game_state["customer_orders"].extend(orders_to_deliver)
-                game_state["pending_orders"] = [o for o in pending_orders if o not in orders_to_deliver]
                 for order in orders_to_deliver:
+                    game_state["pending_orders"].remove(order)
                     socketio.emit('new_order', order, room=room)
+                    logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
                 socketio.emit('game_state', game_state, room=room)
 
     elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
@@ -315,14 +327,18 @@ def on_start_round(data):
         game_state["players"][sid]["builder_ingredients"] = []
 
     if game_state["round"] == 3:
-        game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
+        def set_orders():
+            game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
+            socketio.emit('game_state', game_state, room=room)
+        eventlet.spawn(set_orders)
+    else:
+        socketio.emit('game_state', game_state, room=room)
 
     socketio.emit('round_started', {
         "round": game_state["round"],
         "duration": game_state["round_duration"],
         "customer_orders": game_state["customer_orders"]
     }, room=room)
-    socketio.emit('game_state', game_state, room=room)
     eventlet.spawn(round_timer, game_state["round_duration"], room)
 
 def generate_customer_orders(round_duration):
@@ -405,7 +421,7 @@ def end_round(room):
         else:
             eventlet.spawn(final_debrief_timer, game_state["debrief_duration"], room)
     except Exception as e:
-        logging.error(f"Error in end_round: {e}")
+        logging.error("Error in end_round: %s", e)
 
 def debrief_timer(duration, room):
     eventlet.sleep(duration)
