@@ -1,3 +1,5 @@
+import eventlet
+eventlet.monkey_patch()  # Must be before other imports that use patched libraries
 
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
@@ -33,8 +35,8 @@ def new_game_state():
         "oven_timer_start": None,
         "round_start_time": None,
         "debrief_duration": 180,
-        "customer_orders": [],  # Active orders
-        "pending_orders": []    # Orders waiting to be delivered
+        "customer_orders": [],
+        "pending_orders": []
     }
 
 @app.route('/')
@@ -85,17 +87,16 @@ def on_time_request():
         left = game_state["round_duration"] - elapsed
         roundTimeRemaining = max(0, int(left))
 
-        # Polling for customer orders in Round 3
         if game_state["round"] == 3 and game_state["pending_orders"]:
             current_time = elapsed
             pending_orders = game_state["pending_orders"]
             orders_to_deliver = [order for order in pending_orders if order["arrival_time"] <= current_time]
-            for order in orders_to_deliver:
-                game_state["customer_orders"].append(order)
-                pending_orders.remove(order)
-                socketio.emit('new_order', order, room=room)
-                print(f"Delivered order {order['id']} to room {room} at {current_time:.2f} seconds")
-            socketio.emit('game_state', game_state, room=room)
+            if orders_to_deliver:
+                game_state["customer_orders"].extend(orders_to_deliver)
+                game_state["pending_orders"] = [o for o in pending_orders if o not in orders_to_deliver]
+                for order in orders_to_deliver:
+                    socketio.emit('new_order', order, room=room)
+                socketio.emit('game_state', game_state, room=room)
 
     elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
         elapsed = time.time() - game_state["debrief_start_time"]
@@ -204,7 +205,7 @@ def on_build_pizza(data):
             )
             game_state["built_pizzas"].append(pizza)
             socketio.emit('pizza_built', pizza, room=room)
-    else:  # Round 3
+    else:
         matched_order = next(
             (order for order in game_state["customer_orders"]
              if order["ingredients"]["base"] == counts["base"] and
@@ -309,14 +310,12 @@ def on_start_round(data):
     game_state["oven_on"] = False
     game_state["oven_timer_start"] = None
     game_state["customer_orders"] = []
-    game_state["pending_orders"] = []  # Initialize pending orders
+    game_state["pending_orders"] = []
     for sid in game_state["players"]:
         game_state["players"][sid]["builder_ingredients"] = []
 
-    # Generate customer orders for Round 3
     if game_state["round"] == 3:
         game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
-        print(f"Generated {len(game_state['pending_orders'])} pending orders for room {room}")
 
     socketio.emit('round_started', {
         "round": game_state["round"],
@@ -324,7 +323,7 @@ def on_start_round(data):
         "customer_orders": game_state["customer_orders"]
     }, room=room)
     socketio.emit('game_state', game_state, room=room)
-    threading.Thread(target=round_timer, args=(game_state["round_duration"], room)).start()
+    eventlet.spawn(round_timer, game_state["round_duration"], room)
 
 def generate_customer_orders(round_duration):
     order_types = [
@@ -338,75 +337,78 @@ def generate_customer_orders(round_duration):
         {"type": "heavy pineapple", "ingredients": {"base": 1, "sauce": 1, "ham": 0, "pineapple": 6}}
     ]
     orders = []
-    max_order_time = round_duration - 45  # Last order 45 seconds before end
+    max_order_time = round_duration - 45
     for i in range(50):
         order = {"id": str(uuid.uuid4())[:8], **random.choice(order_types)}
-        order["arrival_time"] = (i * (max_order_time / 49))  # Spread 50 orders over max_order_time
+        order["arrival_time"] = (i * (max_order_time / 49))
         orders.append(order)
     return orders
 
 def round_timer(duration, room):
-    time.sleep(duration)
+    eventlet.sleep(duration)
     end_round(room)
 
 def end_round(room):
-    game_state = group_games.get(room)
-    if not game_state or game_state["current_phase"] != "round":
-        return
-    game_state["current_phase"] = "debrief"
-    game_state["debrief_start_time"] = time.time()
-    leftover_ingredients = len(game_state["prepared_ingredients"])
-    unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
-    unsold_count = len(unsold_pizzas)
-    completed_count = len(game_state["completed_pizzas"])
-    wasted_count = len(game_state["wasted_pizzas"])
+    try:
+        game_state = group_games.get(room)
+        if not game_state or game_state["current_phase"] != "round":
+            return
+        game_state["current_phase"] = "debrief"
+        game_state["debrief_start_time"] = time.time()
+        leftover_ingredients = len(game_state["prepared_ingredients"])
+        unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
+        unsold_count = len(unsold_pizzas)
+        completed_count = len(game_state["completed_pizzas"])
+        wasted_count = len(game_state["wasted_pizzas"])
 
-    if game_state["round"] == 3:
-        fulfilled_orders = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" in pizza)
-        unmatched_pizzas = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
-        remaining_orders = len(game_state["customer_orders"]) + len(game_state["pending_orders"])
-        score = (
-            fulfilled_orders * 20
-            - unmatched_pizzas * 10
-            - wasted_count * 10
-            - unsold_count * 5
-            - leftover_ingredients
-            - remaining_orders * 15
-        )
-        result = {
-            "completed_pizzas_count": completed_count,
-            "wasted_pizzas_count": wasted_count,
-            "unsold_pizzas_count": unsold_count,
-            "ingredients_left_count": leftover_ingredients,
-            "fulfilled_orders_count": fulfilled_orders,
-            "remaining_orders_count": remaining_orders,
-            "unmatched_pizzas_count": unmatched_pizzas,
-            "score": score
-        }
-    else:
-        score = (
-            completed_count * 10
-            - wasted_count * 10
-            - unsold_count * 5
-            - leftover_ingredients
-        )
-        result = {
-            "completed_pizzas_count": completed_count,
-            "wasted_pizzas_count": wasted_count,
-            "unsold_pizzas_count": unsold_count,
-            "ingredients_left_count": leftover_ingredients,
-            "score": score
-        }
+        if game_state["round"] == 3:
+            fulfilled_orders = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" in pizza)
+            unmatched_pizzas = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
+            remaining_orders = len(game_state["customer_orders"]) + len(game_state["pending_orders"])
+            score = (
+                fulfilled_orders * 20
+                - unmatched_pizzas * 10
+                - wasted_count * 10
+                - unsold_count * 5
+                - leftover_ingredients
+                - remaining_orders * 15
+            )
+            result = {
+                "completed_pizzas_count": completed_count,
+                "wasted_pizzas_count": wasted_count,
+                "unsold_pizzas_count": unsold_count,
+                "ingredients_left_count": leftover_ingredients,
+                "fulfilled_orders_count": fulfilled_orders,
+                "remaining_orders_count": remaining_orders,
+                "unmatched_pizzas_count": unmatched_pizzas,
+                "score": score
+            }
+        else:
+            score = (
+                completed_count * 10
+                - wasted_count * 10
+                - unsold_count * 5
+                - leftover_ingredients
+            )
+            result = {
+                "completed_pizzas_count": completed_count,
+                "wasted_pizzas_count": wasted_count,
+                "unsold_pizzas_count": unsold_count,
+                "ingredients_left_count": leftover_ingredients,
+                "score": score
+            }
 
-    socketio.emit('round_ended', result, room=room)
-    if game_state["round"] < game_state["max_rounds"]:
-        game_state["round"] += 1
-        threading.Thread(target=debrief_timer, args=(game_state["debrief_duration"], room)).start()
-    else:
-        threading.Thread(target=final_debrief_timer, args=(game_state["debrief_duration"], room)).start()
+        socketio.emit('round_ended', result, room=room)
+        if game_state["round"] < game_state["max_rounds"]:
+            game_state["round"] += 1
+            eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
+        else:
+            eventlet.spawn(final_debrief_timer, game_state["debrief_duration"], room)
+    except Exception as e:
+        logging.error(f"Error in end_round: {e}")
 
 def debrief_timer(duration, room):
-    time.sleep(duration)
+    eventlet.sleep(duration)
     game_state = group_games.get(room)
     if not game_state:
         return
@@ -427,7 +429,6 @@ def debrief_timer(duration, room):
 
     if game_state["round"] == 3:
         game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
-        print(f"Generated {len(game_state['pending_orders'])} pending orders for room {room} after debrief")
 
     socketio.emit('game_state', game_state, room=room)
     socketio.emit('round_started', {
@@ -435,10 +436,10 @@ def debrief_timer(duration, room):
         "duration": game_state["round_duration"],
         "customer_orders": game_state["customer_orders"]
     }, room=room)
-    threading.Thread(target=round_timer, args=(game_state["round_duration"], room)).start()
+    eventlet.spawn(round_timer, game_state["round_duration"], room)
 
 def final_debrief_timer(duration, room):
-    time.sleep(duration)
+    eventlet.sleep(duration)
     game_state = group_games.get(room)
     if not game_state:
         return
