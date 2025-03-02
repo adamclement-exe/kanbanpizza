@@ -80,50 +80,56 @@ def on_time_request():
         emit('time_response', {"roundTimeRemaining": 0, "ovenTime": 0})
         return
 
-    roundTimeRemaining = 0
-    if game_state["current_phase"] == "round" and game_state["round_start_time"]:
-        elapsed = time.time() - game_state["round_start_time"]
-        left = game_state["round_duration"] - elapsed
-        roundTimeRemaining = max(0, int(left))
+    def process_time_request():
+        try:
+            roundTimeRemaining = 0
+            if game_state["current_phase"] == "round" and game_state["round_start_time"]:
+                elapsed = time.time() - game_state["round_start_time"]
+                left = game_state["round_duration"] - elapsed
+                roundTimeRemaining = max(0, int(left))
 
-        if game_state["round"] == 3 and game_state["pending_orders"]:
-            current_time = elapsed
-            pending_orders = game_state["pending_orders"]
-            orders_to_deliver = []
-            for order in pending_orders[:]:  # Copy to avoid modifying during iteration
-                if order["arrival_time"] <= current_time:
-                    orders_to_deliver.append(order)
-                if len(orders_to_deliver) >= 10:  # Batch size
-                    game_state["customer_orders"].extend(orders_to_deliver)
-                    for order in orders_to_deliver:
-                        game_state["pending_orders"].remove(order)
-                        socketio.emit('new_order', order, room=room)
-                        logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
-                    socketio.emit('game_state', game_state, room=room)
+                if game_state["round"] == 3 and game_state["pending_orders"]:
+                    current_time = elapsed
+                    pending_orders = game_state["pending_orders"]
                     orders_to_deliver = []
-                    eventlet.sleep(0)  # Yield to event loop
-            if orders_to_deliver:  # Handle remaining
-                game_state["customer_orders"].extend(orders_to_deliver)
-                for order in orders_to_deliver:
-                    game_state["pending_orders"].remove(order)
-                    socketio.emit('new_order', order, room=room)
-                    logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
-                socketio.emit('game_state', game_state, room=room)
+                    for order in pending_orders[:]:
+                        if order["arrival_time"] <= current_time:
+                            orders_to_deliver.append(order)
+                        if len(orders_to_deliver) >= 10:
+                            game_state["customer_orders"].extend(orders_to_deliver)
+                            for order in orders_to_deliver:
+                                game_state["pending_orders"].remove(order)
+                                socketio.emit('new_order', order, room=room)
+                                logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
+                            socketio.emit('game_state', game_state, room=room)
+                            orders_to_deliver = []
+                            eventlet.sleep(0)
+                    if orders_to_deliver:
+                        game_state["customer_orders"].extend(orders_to_deliver)
+                        for order in orders_to_deliver:
+                            game_state["pending_orders"].remove(order)
+                            socketio.emit('new_order', order, room=room)
+                            logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
+                        socketio.emit('game_state', game_state, room=room)
 
-    elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
-        elapsed = time.time() - game_state["debrief_start_time"]
-        left = game_state["debrief_duration"] - elapsed
-        roundTimeRemaining = max(0, int(left))
+            elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
+                elapsed = time.time() - game_state["debrief_start_time"]
+                left = game_state["debrief_duration"] - elapsed
+                roundTimeRemaining = max(0, int(left))
 
-    ovenTime = 0
-    if game_state["oven_on"] and game_state["oven_timer_start"]:
-        ovenTime = int(time.time() - game_state["oven_timer_start"])
+            ovenTime = 0
+            if game_state["oven_on"] and game_state["oven_timer_start"]:
+                ovenTime = int(time.time() - game_state["oven_timer_start"])
 
-    emit('time_response', {
-        "roundTimeRemaining": roundTimeRemaining,
-        "ovenTime": ovenTime,
-        "phase": game_state["current_phase"]
-    })
+            socketio.emit('time_response', {
+                "roundTimeRemaining": roundTimeRemaining,
+                "ovenTime": ovenTime,
+                "phase": game_state["current_phase"]
+            }, room=sid)
+        except Exception as e:
+            logging.error("Error in process_time_request: %s", e)
+
+    eventlet.spawn(process_time_request)
 
 @socketio.on('prepare_ingredient')
 def on_prepare_ingredient(data):
@@ -326,20 +332,26 @@ def on_start_round(data):
     for sid in game_state["players"]:
         game_state["players"][sid]["builder_ingredients"] = []
 
-    if game_state["round"] == 3:
-        def set_orders():
-            game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
+    try:
+        if game_state["round"] == 3:
+            def set_orders():
+                try:
+                    game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
+                    socketio.emit('game_state', game_state, room=room)
+                except Exception as e:
+                    logging.error("Error setting orders in Round 3: %s", e)
+            eventlet.spawn(set_orders)
+        else:
             socketio.emit('game_state', game_state, room=room)
-        eventlet.spawn(set_orders)
-    else:
-        socketio.emit('game_state', game_state, room=room)
 
-    socketio.emit('round_started', {
-        "round": game_state["round"],
-        "duration": game_state["round_duration"],
-        "customer_orders": game_state["customer_orders"]
-    }, room=room)
-    eventlet.spawn(round_timer, game_state["round_duration"], room)
+        socketio.emit('round_started', {
+            "round": game_state["round"],
+            "duration": game_state["round_duration"],
+            "customer_orders": game_state["customer_orders"]
+        }, room=room)
+        eventlet.spawn(round_timer, game_state["round_duration"], room)
+    except Exception as e:
+        logging.error("Error in on_start_round: %s", e)
 
 def generate_customer_orders(round_duration):
     order_types = [
