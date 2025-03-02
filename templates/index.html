@@ -4,34 +4,30 @@
   <meta charset="UTF-8">
   <title>Kanban Pizza</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="apple-touch-icon" sizes="180x180" href="static/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="static/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="static/favicon-16x16.png">
-<link rel="manifest" href="static/site.webmanifest">
-  <!-- Bootstrap CSS -->
+  <link rel="apple-touch-icon" sizes="180x180" href="static/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="static/favicon-16x16.png">
+  <link rel="manifest" href="static/site.webmanifest">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Sigmar&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Sigmar&display=swap" rel="stylesheet">
   <style>
     body {
       position: relative;
       background: #f8f9fa;
       color: #333;
       min-height: 100vh;
-      background: url('static/tile3.webp') center center;
-      background-size: 240px 240px;
-  font-family: "Roboto Condensed", serif;
-  font-optical-sizing: auto;
+background-color: #DFDBE5;
+background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm20 0a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM10 37a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm10-17h20v20H20V20zm10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z' fill='%239C92AC' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+      font-family: "Roboto Condensed", serif;
+      font-optical-sizing: auto;
     }
-
-    h1,h2,h3,h4,h5{
-    font-family: "Sigmar", serif;
-  font-weight: 400;
-  font-style: normal;
+    h1, h2, h3, h4, h5 {
+      font-family: "Sigmar", serif;
+      font-weight: 400;
+      font-style: normal;
     }
-
-
     .modal-content {
       position: relative;
       background: rgba(255, 255, 255, 0.8);
@@ -68,7 +64,6 @@
       margin: 5px;
       cursor: pointer;
     }
-    /* Visual indicator for touch-selected ingredients */
     .ingredient.selected {
       border: 2px solid #007bff;
       border-radius: 4px;
@@ -132,18 +127,15 @@
     .undercooked .emoji {
       filter: sepia(1) hue-rotate(10deg) saturate(300%);
     }
-
-    #built-pizzas .emoji, #oven .emoji{
-    filter: sepia(1) hue-rotate(10deg) saturate(300%);
+    #built-pizzas .emoji, #oven .emoji {
+      filter: sepia(1) hue-rotate(10deg) saturate(300%);
     }
-
     .burnt .emoji {
       filter: grayscale(1) brightness(0.3);
     }
     .invalid .emoji {
       filter: grayscale(1) contrast(1.2);
     }
-    /* Pager-style messages box (80s pager look) */
     #messages {
       background-color: #000;
       border: 2px solid #555;
@@ -160,6 +152,18 @@
       text-transform: uppercase;
       color: #0f0;
     }
+    .pizza-builder-container {
+      border: 1px solid #4A4A4A;
+      padding: 10px;
+      margin-bottom: 10px;
+      min-height: 150px;
+    }
+    .pizza-builder-dropzone {
+      background-color: #D3D3D3;
+      min-height: 100px;
+      border: 1px dashed #4A4A4A;
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
@@ -168,17 +172,14 @@
       <h1 class="h3">🍕 Kanban Pizza</h1>
     </header>
 
-    <!-- Navigation with buttons, timers, and the new pager-style messages box -->
     <nav class="d-flex flex-column mb-3">
       <div class="d-flex justify-content-between align-items-center w-100">
-        <!-- Left side: buttons -->
         <div>
           <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
           <button id="oven-on" class="btn btn-success btn-custom">Turn Oven On</button>
           <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
           <button id="instructions-btn" class="btn btn-secondary btn-custom">Instructions</button>
         </div>
-        <!-- Right side: timers -->
         <div class="d-flex align-items-center">
           <div id="oven-container" class="timer-container oven me-3">
             <span id="oven-timer" class="oven-timer">Oven Time:</span>
@@ -188,7 +189,6 @@
           </div>
         </div>
       </div>
-      <!-- Pager-style messages box -->
       <div id="messages">
         <div class="title">ROOM MESSAGES:</div>
         <div class="content"></div>
@@ -209,13 +209,14 @@
             <h4>Shared Ingredients</h4>
             <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;border: solid #4A4A4A!important;"></div>
 
-            <h4>Your Pizza Builder</h4>
+            <h4 id="builder-heading">Your Pizza Builder</h4>
             <div id="pizza-builder"
                  ondrop="dropToBuilder(event)"
                  ondragover="allowDrop(event)"
-                 class="d-flex flex-wrap border p-2 mb-3"
-                 style="min-height: 100px;border: solid #4A4A4A!important;"></div>
-            <button id="submit-pizza" class="btn btn-primary btn-custom">Submit Pizza</button>
+                 class="flex-wrap border p-2 mb-3"
+                 style="min-height: 100px;border: solid #4A4A4A!important; display: flex;"></div>
+            <button id="submit-pizza" class="btn btn-primary btn-custom" style="display: none;">Submit Pizza</button>
+            <div id="pizza-builders-container" class="row" style="display: none;"></div>
           </div>
 
           <div class="col-md-6">
@@ -242,7 +243,6 @@
     </main>
   </div>
 
-  <!-- Room Join Modal -->
   <div class="modal" tabindex="-1" id="roomModal">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -262,7 +262,6 @@
         </div>
         <div class="modal-body">
           <div class="row">
-            <!-- Left side: Instructions -->
             <div class="col-md-12">
               <h3>Instructions:</h3>
               <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
@@ -272,7 +271,7 @@
                 <li>Drag and drop ingredients into your Pizza Builder to assemble your pizza.</li>
                 <li>If you are on mobile or tablet, just tap to select an ingredient and then tap the Pizza Builder to "drop" it in that area.</li>
                 <li>In this round you only have access to your own pizza builder area.</li>
-                  <li>A valid pizza requires:
+                <li>A valid pizza requires:
                   <ul>
                     <li>1 base</li>
                     <li>1 sauce</li>
@@ -289,10 +288,16 @@
                 <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
                 <li>After baking, pizzas are evaluated:
                   <ul>
-                    <li><strong>Undercooked</strong> (&lt;30 seconds) pizzas get a yellow tint.</li>
-                    <li><strong>Burnt</strong> (&gt;45 seconds) pizzas are tinted dark.</li>
+                    <li><strong>Undercooked</strong> (<30 seconds) pizzas get a yellow tint.</li>
+                    <li><strong>Burnt</strong> (>45 seconds) pizzas are tinted dark.</li>
                   </ul>
                 </li>
+              </ul>
+              <p><strong>How to Play Round 2:</strong></p>
+              <ul>
+                <li>Drag or tap ingredients from the Shared Ingredients pool to any of the Shared Pizza Builders.</li>
+                <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
+                <li>Collaboration is key—work together to optimize pizza production!</li>
               </ul>
               <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
             </div>
@@ -302,7 +307,6 @@
     </div>
   </div>
 
-  <!-- Instructions Modal -->
   <div class="modal" tabindex="-1" id="modal">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -315,9 +319,9 @@
           <p><strong>How to Play Round 1:</strong></p>
           <ul>
             <li>Prepare ingredients by clicking the buttons (Base, Sauce, Ham, Pineapple). This ingredients pool is shared by the whole room.</li>
-                <li>Drag and drop ingredients into your Pizza Builder to assemble your pizza.</li>
-                <li>If you are on mobile or tablet, just tap to select an ingredient and then tap the Pizza Builder to "drop" it in that area.</li>
-                <li>In this round you only have access to your own pizza builder area.</li>
+            <li>Drag and drop ingredients into your Pizza Builder to assemble your pizza.</li>
+            <li>If you are on mobile or tablet, just tap to select an ingredient and then tap the Pizza Builder to "drop" it in that area.</li>
+            <li>In this round you only have access to your own pizza builder area.</li>
             <li>A valid pizza requires:
               <ul>
                 <li>1 base</li>
@@ -335,10 +339,16 @@
             <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
             <li>After baking, pizzas are evaluated:
               <ul>
-                <li><strong>Undercooked</strong> (&lt;30 seconds) pizzas get a yellow tint.</li>
-                <li><strong>Burnt</strong> (&gt;45 seconds) pizzas are tinted dark.</li>
+                <li><strong>Undercooked</strong> (<30 seconds) pizzas get a yellow tint.</li>
+                <li><strong>Burnt</strong> (>45 seconds) pizzas are tinted dark.</li>
               </ul>
             </li>
+          </ul>
+          <p><strong>How to Play Round 2:</strong></p>
+          <ul>
+            <li>Drag or tap ingredients from the Shared Ingredients pool to any of the Shared Pizza Builders.</li>
+            <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
+            <li>Collaboration is key—work together to optimize pizza production!</li>
           </ul>
           <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
         </div>
@@ -349,13 +359,11 @@
     </div>
   </div>
 
-  <!-- Debrief Modal -->
   <div class="modal fade" id="debriefModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content p-3">
         <div class="modal-header">
           <h5 class="modal-title">End of Round Summary</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body" id="debriefModalBody">
           <p><strong>Pizzas Completed:</strong> <span id="debrief-pizzas-completed">0</span></p>
@@ -371,21 +379,16 @@
             Embrace change and collaboration – as the Agile Manifesto encourages, adapt and continuously improve!
           </em></p>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     var socket = io();
     var myRoom = "";
-    var builderIngredients = [];
-    // Global variable to store a touch-selected ingredient (for mobile)
+    var builderIngredients = [];  // For Round 1 only
     var touchSelectedIngredient = null;
     var ingredientEmoji = {
       "base": "🟡",
@@ -394,22 +397,25 @@
       "pineapple": "🍍"
     };
 
-    // Helper function to update the pager-style messages box
     function updateMessage(text) {
       document.querySelector("#messages .content").innerText = text;
     }
 
-    // Poll the server for times every second
     setInterval(() => {
       socket.emit('time_request');
     }, 1000);
 
     socket.on('time_response', function(data) {
-      document.getElementById("timer").innerText = "Round Time:\n" + data.roundTimeRemaining + " sec";
+      if (data.phase === "debrief") {
+        document.getElementById("timer").innerText = "DEBRIEF:\n" + data.roundTimeRemaining + " sec";
+      } else if (data.phase === "round") {
+        document.getElementById("timer").innerText = "Round Time:\n" + data.roundTimeRemaining + " sec";
+      } else {
+        document.getElementById("timer").innerText = "Round Time:";
+      }
       document.getElementById("oven-timer").innerText = "Oven Time:\n" + data.ovenTime + " sec";
     });
 
-    // On connect, show the room join modal
     socket.on('connect', function() {
       var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
         backdrop: 'static',
@@ -418,7 +424,6 @@
       roomModal.show();
     });
 
-    // Handle join form submission
     document.getElementById("join-form").addEventListener("submit", function(e) {
       e.preventDefault();
       var room = document.getElementById("room-input").value || "default";
@@ -428,13 +433,11 @@
       joinModal.hide();
     });
 
-    // Basic modal logic for instructions modal
     var modalEl = document.getElementById("modal");
     var modal = new bootstrap.Modal(modalEl);
     document.getElementById("instructions-btn").addEventListener("click", () => modal.show());
     document.getElementById("modal-close").addEventListener("click", () => modal.hide());
 
-    // Drag & Drop logic for desktop
     function allowDrop(ev) { ev.preventDefault(); }
     function drag(ev) {
       ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
@@ -445,8 +448,16 @@
       var ingredient_id = ev.dataTransfer.getData("ingredient_id");
       var ingredient_type = ev.dataTransfer.getData("ingredient_type");
       socket.emit('take_ingredient', { ingredient_id: ingredient_id });
-      builderIngredients.push({ id: ingredient_id, type: ingredient_type });
-      updateBuilderDisplay();
+      if (state.round === 1) {
+        builderIngredients.push({ id: ingredient_id, type: ingredient_type });
+        updateBuilderDisplay();
+      }
+    }
+    function dropToSharedBuilder(ev, sid) {
+      ev.preventDefault();
+      var ingredient_id = ev.dataTransfer.getData("ingredient_id");
+      var ingredient_type = ev.dataTransfer.getData("ingredient_type");
+      socket.emit('take_ingredient', { ingredient_id: ingredient_id, target_sid: sid });
     }
     function updateBuilderDisplay() {
       var builderDiv = document.getElementById("pizza-builder");
@@ -461,6 +472,53 @@
     function prepareIngredient(type) {
       socket.emit('prepare_ingredient', { ingredient_type: type });
     }
+
+    function renderPizzaBuilders(players) {
+      var container = document.getElementById("pizza-builders-container");
+      container.innerHTML = "";
+      Object.keys(players).forEach(function(sid, index) {
+        var colDiv = document.createElement("div");
+        colDiv.classList.add("col-md-4"); // 3 columns per row
+        var builderDiv = document.createElement("div");
+        builderDiv.classList.add("pizza-builder-container");
+        builderDiv.innerHTML = `<h5>Builder #${index + 1}</h5>`;
+        var ingredientsDiv = document.createElement("div");
+        ingredientsDiv.classList.add("d-flex", "flex-wrap", "pizza-builder-dropzone");
+        ingredientsDiv.setAttribute("ondrop", `dropToSharedBuilder(event, '${sid}')`);
+        ingredientsDiv.setAttribute("ondragover", "allowDrop(event)");
+        players[sid]["builder_ingredients"].forEach(function(ing) {
+          var item = document.createElement("div");
+          item.classList.add("ingredient");
+          item.innerText = ingredientEmoji[ing.type] || ing.type;
+          ingredientsDiv.appendChild(item);
+        });
+        builderDiv.appendChild(ingredientsDiv);
+        var submitBtn = document.createElement("button");
+        submitBtn.className = "btn btn-primary btn-custom mt-2";
+        submitBtn.innerText = "Submit Pizza";
+        submitBtn.onclick = function() {
+          socket.emit('build_pizza', { player_sid: sid });
+        };
+        builderDiv.appendChild(submitBtn);
+        colDiv.appendChild(builderDiv);
+        container.appendChild(colDiv);
+
+        if ('ontouchstart' in window) {
+          ingredientsDiv.addEventListener("touchend", function(ev) {
+            ev.preventDefault();
+            if (touchSelectedIngredient) {
+              socket.emit('take_ingredient', { ingredient_id: touchSelectedIngredient.id, target_sid: sid });
+              touchSelectedIngredient = null;
+              var selectedItems = document.querySelectorAll('.ingredient.selected');
+              selectedItems.forEach(function(el) {
+                el.classList.remove('selected');
+              });
+            }
+          });
+        }
+      });
+    }
+
     document.getElementById("submit-pizza").addEventListener("click", function() {
       if (builderIngredients.length === 0) {
         alert("No ingredients selected for pizza!");
@@ -471,17 +529,14 @@
       updateBuilderDisplay();
     });
 
-    // Mobile alternative: touch events
     if ('ontouchstart' in window) {
-      // Add touch event listener on the pizza builder to "drop" the selected ingredient
       var builderDiv = document.getElementById("pizza-builder");
       builderDiv.addEventListener("touchend", function(ev) {
         ev.preventDefault();
-        if (touchSelectedIngredient) {
+        if (touchSelectedIngredient && state.round === 1) {
           socket.emit('take_ingredient', { ingredient_id: touchSelectedIngredient.id });
           builderIngredients.push({ id: touchSelectedIngredient.id, type: touchSelectedIngredient.type });
           updateBuilderDisplay();
-          // Remove visual selection from any ingredient in the pool
           var selectedItems = document.querySelectorAll('.ingredient.selected');
           selectedItems.forEach(function(el) {
             el.classList.remove('selected');
@@ -491,16 +546,24 @@
       });
     }
 
-    // Render game state updates
-    socket.on('game_state', function(state) {
+    var state = {};
+    function updateGameState(newState) {
+      state = newState;
+      console.log("Game State:", state);
+
+      // Update game area and start button visibility based on phase
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
-      } else if (state.current_phase === "waiting") {
+      } else {
         document.getElementById("game-area").style.display = "none";
-        document.getElementById("timer").innerText = "Round Time:";
         document.getElementById("start-round").style.display = "inline-block";
       }
+
+      // Update builder visibility
+      updateVisibility();
+
+      // Update prepared ingredients pool
       var poolDiv = document.getElementById("prepared-pool");
       poolDiv.innerHTML = "";
       state.prepared_ingredients.forEach(function(item) {
@@ -511,11 +574,9 @@
         div.dataset.type = item.type;
         div.innerText = ingredientEmoji[item.type] || item.type;
         div.addEventListener("dragstart", drag);
-        // If touch is supported, add a touchstart listener to select the ingredient
         if ('ontouchstart' in window) {
           div.addEventListener("touchstart", function(ev) {
             ev.preventDefault();
-            // Remove selection from any previously selected ingredient
             var previouslySelected = document.querySelectorAll('.ingredient.selected');
             previouslySelected.forEach(function(el) {
               el.classList.remove('selected');
@@ -526,6 +587,7 @@
         }
         poolDiv.appendChild(div);
       });
+
       function renderPizza(pizza, extraLabel) {
         var div = document.createElement("div");
         if (pizza.emoji) {
@@ -543,6 +605,7 @@
         }
         return div;
       }
+
       var builtDiv = document.getElementById("built-pizzas");
       builtDiv.innerHTML = "";
       state.built_pizzas.forEach(function(pizza) {
@@ -556,30 +619,79 @@
         div.appendChild(btn);
         builtDiv.appendChild(div);
       });
+
       var ovenDiv = document.getElementById("oven");
       ovenDiv.innerHTML = "";
       state.oven.forEach(function(pizza) {
         var div = renderPizza(pizza, " ");
         ovenDiv.appendChild(div);
       });
+
       var compDiv = document.getElementById("completed");
       compDiv.innerHTML = "";
       state.completed_pizzas.forEach(function(pizza) {
         var div = renderPizza(pizza, " ");
         compDiv.appendChild(div);
       });
+
       var wastedDiv = document.getElementById("wasted");
       wastedDiv.innerHTML = "";
       state.wasted_pizzas.forEach(function(pizza) {
         var div = renderPizza(pizza, "");
         wastedDiv.appendChild(div);
       });
+    }
+
+    function updateVisibility() {
+      const pizzaBuilder = document.getElementById("pizza-builder");
+      const submitPizza = document.getElementById("submit-pizza");
+      const buildersContainer = document.getElementById("pizza-builders-container");
+      const builderHeading = document.getElementById("builder-heading");
+
+      if (state.round >= 1 && state.current_phase === "debrief" && state.round < state.max_rounds) {
+        // Debrief after Round 1 (leading to Round 2)
+        console.log("Debrief after Round 1: Showing shared builders");
+        pizzaBuilder.style.display = "none";
+        submitPizza.style.display = "none";
+        buildersContainer.style.display = "flex";
+        builderHeading.innerText = "Shared Pizza Builders";
+        renderPizzaBuilders(state.players);
+      } else if (state.round > 1) {
+        // Round 2 or beyond
+        console.log("Round 2+: Showing shared builders");
+        pizzaBuilder.style.display = "none";
+        submitPizza.style.display = "none";
+        buildersContainer.style.display = "flex";
+        builderHeading.innerText = "Shared Pizza Builders";
+        if (state.current_phase === "round") {
+          renderPizzaBuilders(state.players);
+        }
+      } else {
+        // Round 1 or waiting
+        console.log("Round 1 or waiting: Showing pizza-builder");
+        pizzaBuilder.style.display = "flex";
+        submitPizza.style.display = "inline-block";
+        buildersContainer.style.display = "none";
+        builderHeading.innerText = "Your Pizza Builder";
+      }
+    }
+
+    socket.on('game_state', function(newState) {
+      updateGameState(newState);
     });
 
     socket.on('round_started', function(data) {
+      state.round = data.round;
+      state.current_phase = "round";
       updateMessage("Round " + data.round + " started. Duration: " + data.duration + " sec");
       document.getElementById("game-area").style.display = "block";
       document.getElementById("start-round").style.display = "none";
+      var debriefModalEl = document.getElementById('debriefModal');
+      var debriefModal = bootstrap.Modal.getInstance(debriefModalEl);
+      if (debriefModal) {
+        debriefModal.hide();
+      }
+      updateVisibility();
     });
 
     socket.on('round_ended', function(result) {
@@ -590,6 +702,8 @@
       document.getElementById("debrief-score").innerText = result.score;
       var debriefModal = new bootstrap.Modal(document.getElementById('debriefModal'), {});
       debriefModal.show();
+      // Update visibility immediately to reflect debrief state
+      updateVisibility();
     });
 
     socket.on('game_reset', function(state) {
@@ -601,6 +715,7 @@
       if (modalInstance) {
         modalInstance.hide();
       }
+      updateGameState(state);
     });
 
     socket.on('ingredient_prepared', function(item) {
@@ -627,6 +742,10 @@
         ovenContainer.classList.remove("oven-active");
       }
     });
+    socket.on('clear_shared_builder', function(data) {
+      renderPizzaBuilders(state.players);
+    });
+
     document.getElementById("oven-on").addEventListener("click", function() {
       socket.emit('toggle_oven', { state: "on" });
     });
