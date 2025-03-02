@@ -444,12 +444,8 @@
           <p id="unmatched-pizzas" style="display: none;"><strong>Unmatched Pizzas:</strong> <span id="debrief-unmatched-pizzas">0</span></p>
           <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
           <hr>
-          <p><em class="text-muted">
-            Reflect on the round: How did your ingredient choices and oven timing affect your pizza’s outcome?
-          </em></p>
-          <p><em class="text-muted">
-            Embrace change and collaboration – as the Agile Manifesto encourages, adapt and continuously improve!
-          </em></p>
+          <p><em class="text-muted" id="debrief-question"></em></p>
+          <p><em class="text-muted" id="debrief-quote"></em></p>
         </div>
       </div>
     </div>
@@ -477,6 +473,22 @@
       "plain": '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>',
       "heavy ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
       "heavy pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>'
+    };
+
+    // Define round-specific debrief content
+    const debriefContent = {
+      1: {
+        question: "Reflect on the round: How did you identify and streamline your pizza-making process? Did the oven’s WIP limit of 3 pizzas affect your strategy?",
+        quote: "“Working software is the primary measure of progress.” – Agile Manifesto. In this case, think of 'working software' as successfully baked pizzas!"
+      },
+      2: {
+        question: "Reflect on the round: How did collaboration with your team impact your pizza production? Did sharing builders help or hinder your flow?",
+        quote: "“Individuals and interactions over processes and tools.” – Agile Manifesto. Collaboration is key to adapting and improving!"
+      },
+      3: {
+        question: "Reflect on the round: How did customer orders change your priorities? Were you able to balance order fulfillment with minimizing waste?",
+        quote: "“Customer collaboration over contract negotiation.” – Agile Manifesto. Meeting customer needs drives success!"
+      }
     };
 
     function updateMessage(text) {
@@ -828,6 +840,15 @@
         document.getElementById("remaining-orders").style.display = "none";
         document.getElementById("unmatched-pizzas").style.display = "none";
       }
+
+      // Add round-specific question and quote
+      const content = debriefContent[state.round] || {
+        question: "Reflect on the round.",
+        quote: "“Continuous improvement is better than delayed perfection.” – Agile principle."
+      };
+      document.getElementById("debrief-question").innerText = content.question;
+      document.getElementById("debrief-quote").innerText = content.quote;
+
       var debriefModal = new bootstrap.Modal(document.getElementById('debriefModal'), {});
       debriefModal.show();
       updateVisibility();
@@ -927,5 +948,5 @@
   </script>
   <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a27b4b49d56a7b',t:'MTc0MDkzNTE1NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
   <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a2c42a6d451373',t:'MTc0MDkzODEzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a365cdce8f44e4',t:'MTc0MDk0NDc2MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
