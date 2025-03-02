@@ -101,7 +101,10 @@ def on_time_request():
                                 game_state["pending_orders"].remove(order)
                                 socketio.emit('new_order', order, room=room)
                                 logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
-                            socketio.emit('game_state', game_state, room=room)
+                            socketio.emit('game_state_update', {
+                                "customer_orders": game_state["customer_orders"],
+                                "pending_orders": game_state["pending_orders"]
+                            }, room=room)
                             orders_to_deliver = []
                             eventlet.sleep(0)
                     if orders_to_deliver:
@@ -110,7 +113,10 @@ def on_time_request():
                             game_state["pending_orders"].remove(order)
                             socketio.emit('new_order', order, room=room)
                             logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
-                        socketio.emit('game_state', game_state, room=room)
+                        socketio.emit('game_state_update', {
+                            "customer_orders": game_state["customer_orders"],
+                            "pending_orders": game_state["pending_orders"]
+                        }, room=room)
 
             elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
                 elapsed = time.time() - game_state["debrief_start_time"]
