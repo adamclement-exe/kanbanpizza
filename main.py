@@ -46,30 +46,52 @@ def index():
 def on_connect():
     logging.info("Client connected: %s", request.sid)
 
+
 @socketio.on('join')
 def on_join(data):
-    room = data.get("room", "default")
+    room = data.get("room", "default")  # Default to "default" if no room is specified
     if room not in group_games:
-        group_games[room] = new_game_state()
+        group_games[room] = new_game_state()  # Create a new game state if the room doesn't exist
     game_state = group_games[room]
-    player_group[request.sid] = room
+    player_group[request.sid] = room  # Map the player's session ID to their room
+
+    # Add player to the room's game state if not already present
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": []}
-    join_room(room)
-    socketio.emit('game_state', game_state, room=room)
+
+    join_room(room)  # Add the player to the SocketIO room
+    socketio.emit('game_state', game_state, room=room)  # Send updated game state to the room
     logging.info("Client %s joined room %s", request.sid, room)
+
+    # Broadcast updated room list to all clients
+    room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
+    socketio.emit('room_list', {"rooms": room_list}, broadcast=True)
+
 
 @socketio.on('disconnect')
 def on_disconnect():
     sid = request.sid
-    room = player_group.get(sid)
+    room = player_group.get(sid)  # Get the room the player was in
     if room:
         game_state = group_games.get(room)
         if game_state and sid in game_state["players"]:
-            del game_state["players"][sid]
-        del player_group[sid]
+            del game_state["players"][sid]  # Remove the player from the game state
+        del player_group[sid]  # Remove the player from the player_group mapping
+
+        # Emit updated game state to the room
         socketio.emit('game_state', game_state, room=room)
-        logging.info("Client disconnected: %s", sid)
+
+        # Clean up empty rooms (optional)
+        if game_state and len(game_state["players"]) == 0:
+            del group_games[room]
+            logging.info("Room %s deleted as it is now empty", room)
+
+        logging.info("Client disconnected: %s from room %s", sid, room)
+
+        # Broadcast updated room list to all clients
+        room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
+        socketio.emit('room_list', {"rooms": room_list}, broadcast=True)
+
 
 @socketio.on('time_request')
 def on_time_request():
@@ -317,6 +339,16 @@ def toggle_oven(data):
         game_state["oven_timer_start"] = None
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
     socketio.emit('game_state', game_state, room=room)
+
+
+@socketio.on('request_room_list')
+def on_request_room_list():
+    room_list = {}
+    for room, game_state in group_games.items():
+        player_count = len(game_state["players"])
+        if player_count > 0:  # Only include rooms with players
+            room_list[room] = player_count
+    emit('room_list', {"rooms": room_list})
 
 @socketio.on('start_round')
 def on_start_round(data):
