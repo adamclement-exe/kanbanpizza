@@ -9,12 +9,12 @@ import logging
 import random
 import os
 
-# Minimal logging to reduce CPU/memory overhead
+# Minimal logging to save resources
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret!')
-# Use provided free Redis URL from Render, fallback for local testing
+# Use Render free Redis URL, fallback for local testing
 redis_url = os.getenv('REDIS_URL', 'redis://red-cv2qp25umphs739tuhrg:6379')
 socketio = SocketIO(app, cors_allowed_origins="*", message_queue=redis_url)
 
@@ -53,6 +53,7 @@ def on_connect():
 @socketio.on('join')
 def on_join(data):
     room = data.get("room", "default")
+    # Pre-initialize room to reduce join-time lag
     if room not in group_games:
         group_games[room] = new_game_state()
     game_state = group_games[room]
@@ -60,6 +61,7 @@ def on_join(data):
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": []}
     join_room(room)
+    # Immediate emission to ensure client modal hides quickly
     socketio.emit('game_state', game_state, room=room)
     logging.info("Client %s joined room %s", request.sid, room)
 
@@ -147,8 +149,7 @@ def on_prepare_ingredient(data):
         emit('error', {"message": "Invalid ingredient type"}, room=request.sid)
         return
     prepared_id = str(uuid.uuid4())[:8]
-    # Trimmed prepared_item to save memory
-    prepared_item = {"id": prepared_id, "type": ingredient_type}
+    prepared_item = {"id": prepared_id, "type": ingredient_type}  # Trimmed to save memory
     game_state["prepared_ingredients"].append(prepared_item)
     socketio.emit('ingredient_prepared', prepared_item, room=room)
     socketio.emit('game_state', game_state, room=room)
