@@ -120,13 +120,5 @@ This project is open-source under the MIT License. Feel free to use, modify, and
    git push origin main
    ```
 
-### Create Directly on GitHub:
-1. Go to [KanbanPizza Repository](https://github.com/adamclement-exe/kanbanpizza).
-2. Click "Create new file".
-3. Name it `README.md`.
-4. Paste the content from the code block above.
-5. Commit with a message like "Add README" and save.
 
-### Verification
-After adding, visit [KanbanPizza GitHub](https://github.com/adamclement-exe/kanbanpizza) to ensure the README renders correctly.
 
