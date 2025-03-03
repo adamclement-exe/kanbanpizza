@@ -7,12 +7,16 @@ import time
 import uuid
 import logging
 import random
+import os
 
-logging.basicConfig(level=logging.DEBUG)
+# Minimal logging to reduce CPU/memory overhead
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret!')
+# Use provided free Redis URL from Render, fallback for local testing
+redis_url = os.getenv('REDIS_URL', 'redis://red-cv2qp25umphs739tuhrg:6379')
+socketio = SocketIO(app, cors_allowed_origins="*", message_queue=redis_url)
 
 group_games = {}
 player_group = {}
@@ -95,12 +99,10 @@ def on_time_request():
                     for order in pending_orders[:]:
                         if order["arrival_time"] <= current_time:
                             orders_to_deliver.append(order)
+                            game_state["pending_orders"].remove(order)
                         if len(orders_to_deliver) >= 10:
                             game_state["customer_orders"].extend(orders_to_deliver)
-                            for order in orders_to_deliver:
-                                game_state["pending_orders"].remove(order)
-                                socketio.emit('new_order', order, room=room)
-                                logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
+                            socketio.emit('new_orders', orders_to_deliver, room=room)
                             socketio.emit('game_state_update', {
                                 "customer_orders": game_state["customer_orders"],
                                 "pending_orders": game_state["pending_orders"]
@@ -109,10 +111,7 @@ def on_time_request():
                             eventlet.sleep(0)
                     if orders_to_deliver:
                         game_state["customer_orders"].extend(orders_to_deliver)
-                        for order in orders_to_deliver:
-                            game_state["pending_orders"].remove(order)
-                            socketio.emit('new_order', order, room=room)
-                            logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
+                        socketio.emit('new_orders', orders_to_deliver, room=room)
                         socketio.emit('game_state_update', {
                             "customer_orders": game_state["customer_orders"],
                             "pending_orders": game_state["pending_orders"]
@@ -148,7 +147,8 @@ def on_prepare_ingredient(data):
         emit('error', {"message": "Invalid ingredient type"}, room=request.sid)
         return
     prepared_id = str(uuid.uuid4())[:8]
-    prepared_item = {"id": prepared_id, "type": ingredient_type, "prepared_by": room}
+    # Trimmed prepared_item to save memory
+    prepared_item = {"id": prepared_id, "type": ingredient_type}
     game_state["prepared_ingredients"].append(prepared_item)
     socketio.emit('ingredient_prepared', prepared_item, room=room)
     socketio.emit('game_state', game_state, room=room)
@@ -339,13 +339,14 @@ def on_start_round(data):
         game_state["players"][sid]["builder_ingredients"] = []
 
     try:
+        logging.info("Starting round %d for room %s", game_state["round"], room)
         if game_state["round"] == 3:
             def set_orders():
                 try:
                     game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
                     socketio.emit('game_state', game_state, room=room)
                 except Exception as e:
-                    logging.error("Error setting orders in Round 3: %s", e)
+                    logging.error("Error setting orders: %s", e)
             eventlet.spawn(set_orders)
         else:
             socketio.emit('game_state', game_state, room=room)
@@ -374,7 +375,7 @@ def generate_customer_orders(round_duration):
     max_order_time = round_duration - 45
     for i in range(50):
         order = {"id": str(uuid.uuid4())[:8], **random.choice(order_types)}
-        order["arrival_time"] = (i * (max_order_time / 49))
+        order["arrival_time"] = i * (max_order_time / 49)
         orders.append(order)
     return orders
 
