@@ -110,7 +110,7 @@
     .btn-custom {
       margin-right: 6px;
     }
-.emoji-wrapper {
+    .emoji-wrapper {
       position: relative;
       display: inline-block;
       width: 2.5rem;
@@ -284,7 +284,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <div class="col-md-6">
-            <h2 class="modal-title">🍕 WELCOME TO KANBAN PIZZA!</h2>
+            <h2 class="modal-title">🍕 Welcome to Kanban Pizza!</h2>
           </div>
           <div class="col-md-6">
             <form id="join-form">
@@ -292,67 +292,26 @@
                 <label for="room-input" class="form-label">Enter Room Number</label>
                 <input type="text" class="form-control" id="room-input" placeholder="Room number">
               </div>
-              <button type="submit" class="btn btn-primary">Join Room</button>
+              <button type="submit" class="btn btn-primary">Join or Create Room</button>
             </form>
           </div>
         </div>
         <div class="modal-body">
           <div class="row">
             <div class="col-md-12">
-              <h3>Instructions:</h3>
-              <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
-              <p><strong>How to Play Round 1:</strong></p>
-              <ul>
-                <li>Prepare ingredients by clicking the buttons (Base, Sauce, Ham, Pineapple). This ingredients pool is shared by the whole room.</li>
-                <li>Drag and drop ingredients into your Pizza Builder to assemble your pizza.</li>
-                <li>If you are on mobile or tablet, just tap to select an ingredient and then tap the Pizza Builder to "drop" it in that area.</li>
-                <li>In this round you only have access to your own pizza builder area.</li>
-                <li>A valid pizza requires:
-                  <ul>
-                    <li>1 base</li>
-                    <li>1 sauce</li>
-                    <li>Either 4 ham (for a bacon pizza) or 2 ham + 2 pineapple (for a pineapple pizza).</li>
-                  </ul>
-                </li>
-                <li>Submit your pizza once built. Valid pizzas will display with an emoji overlay:
-                  <ul>
-                    <li>🍕 + 🥓 for bacon pizzas</li>
-                    <li>🍕 + 🍍 for pineapple pizzas</li>
-                  </ul>
-                </li>
-                <li>Invalid pizzas show a 🍕 with a 🚫 overlay.</li>
-                <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
-                <li>After baking, pizzas are evaluated:
-                  <ul>
-                    <li><strong>Undercooked</strong> (<30 seconds) pizzas get a yellow tint.</li>
-                    <li><strong>Burnt</strong> (>45 seconds) pizzas are tinted dark.</li>
-                  </ul>
-                </li>
-              </ul>
-              <p><strong>How to Play Round 2:</strong></p>
-              <ul>
-                <li>Drag or tap ingredients from the Shared Ingredients pool to any of the Shared Pizza Builders.</li>
-                <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
-                <li>Collaboration is key—work together to optimize pizza production!</li>
-              </ul>
-              <p><strong>How to Play Round 3:</strong></p>
-              <ul>
-                <li>Use the Shared Pizza Builders to collaborate, as in Round 2.</li>
-                <li>50 customer orders arrive throughout the round, specifying exact ingredient combinations:</li>
-                <ul>
-                  <li><strong>Ham:</strong> 1 base, 1 sauce, 4 ham</li>
-                  <li><strong>Pineapple:</strong> 1 base, 1 sauce, 4 pineapple</li>
-                  <li><strong>Ham & Pineapple:</strong> 1 base, 1 sauce, 2 ham, 2 pineapple</li>
-                  <li><strong>Light Ham:</strong> 1 base, 1 sauce, 1 ham</li>
-                  <li><strong>Light Pineapple:</strong> 1 base, 1 sauce, 1 pineapple</li>
-                  <li><strong>Plain:</strong> 1 base, 1 sauce</li>
-                  <li><strong>Heavy Ham:</strong> 1 base, 1 sauce, 6 ham</li>
-                  <li><strong>Heavy Pineapple:</strong> 1 base, 1 sauce, 6 pineapple</li>
-                </ul>
-                <li>Build pizzas to match these orders exactly. Unmatched pizzas are wasted.</li>
-                <li>Orders arrive over time, with the last one at least 45 seconds before the round ends.</li>
-              </ul>
-              <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
+              <p><strong>Room Limits:</strong> Maximum 10 active rooms at a time. Each room can have up to 5 players.</p>
+              <h3>Active Rooms</h3>
+              <table class="table table-striped" id="room-table">
+                <thead>
+                  <tr>
+                    <th>Room Name</th>
+                    <th>Players</th>
+                  </tr>
+                </thead>
+                <tbody id="room-table-body">
+                  <!-- Dynamically populated via JavaScript -->
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -455,8 +414,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-
-
     var socket = io();
     var myRoom = "";
     var builderIngredients = [];
@@ -519,15 +476,39 @@
         keyboard: false
       });
       roomModal.show();
+      socket.emit('request_room_list'); // Request room list when connected
+    });
+
+    socket.on('room_list', function(data) {
+      var tbody = document.getElementById('room-table-body');
+      tbody.innerHTML = '';
+      Object.keys(data.rooms).forEach(function(room) {
+        var row = document.createElement('tr');
+        var nameCell = document.createElement('td');
+        nameCell.innerText = room;
+        var countCell = document.createElement('td');
+        countCell.innerText = data.rooms[room];
+        row.appendChild(nameCell);
+        row.appendChild(countCell);
+        tbody.appendChild(row);
+      });
+    });
+
+    socket.on('join_error', function(data) {
+      alert(data.message); // Show error message if join fails
     });
 
     document.getElementById("join-form").addEventListener("submit", function(e) {
       e.preventDefault();
       var room = document.getElementById("room-input").value || "default";
       myRoom = room;
-      socket.emit('join', { room: room });
-      var joinModal = bootstrap.Modal.getInstance(document.getElementById('roomModal'));
-      joinModal.hide();
+      socket.emit('join', { room: room }, function(response) {
+        // Callback to handle server response
+        if (response && response.success) {
+          var joinModal = bootstrap.Modal.getInstance(document.getElementById('roomModal'));
+          joinModal.hide();
+        }
+      });
     });
 
     var modalEl = document.getElementById("modal");
@@ -844,7 +825,6 @@
         document.getElementById("unmatched-pizzas").style.display = "none";
       }
 
-      // Add round-specific question and quote
       const content = debriefContent[state.round] || {
         question: "Reflect on the round.",
         quote: "“Continuous improvement is better than delayed perfection.” – Agile principle."
@@ -950,13 +930,11 @@
     });
 
     socket.on('game_state_update', function(update) {
-    if (update.customer_orders) state.customer_orders = update.customer_orders;
-    if (update.pending_orders) state.pending_orders = update.pending_orders;
-    updateGameState(state);  // Ensure this merges updates into the UI
-});
-
+      if (update.customer_orders) state.customer_orders = update.customer_orders;
+      if (update.pending_orders) state.pending_orders = update.pending_orders;
+      updateGameState(state);
+    });
   </script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a27b4b49d56a7b',t:'MTc0MDkzNTE1NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a2c42a6d451373',t:'MTc0MDkzODEzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91a365cdce8f44e4',t:'MTc0MDk0NDc2MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+
+</body>
 </html>
