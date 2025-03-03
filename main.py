@@ -12,19 +12,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-redis_url = 'redis://red-cv2qp25umphs739tuhrg:6379'
-
-# Initialize SocketIO with Redis and error handling
-try:
-    socketio = SocketIO(app, cors_allowed_origins="*", message_queue=redis_url, async_mode='eventlet', logger=True, engineio_logger=True)
-except Exception as e:
-    logging.error("Failed to initialize SocketIO with Redis: %s", e)
-    raise
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 group_games = {}
 player_group = {}
-MAX_ROOMS = 10
-MAX_PLAYERS_PER_ROOM = 5
 
 def new_game_state():
     return {
@@ -53,31 +44,11 @@ def index():
 
 @socketio.on('connect')
 def on_connect():
-    logging.info("Client connected: %s, args: %s", request.sid, request.args)
-
-@socketio.on('request_room_list')
-def on_request_room_list():
-    for room in list(group_games.keys()):
-        if not group_games[room]["players"]:
-            del group_games[room]
-    room_list = {room: len(state["players"]) for room, state in group_games.items()}
-    emit('room_list', {'rooms': room_list})
+    logging.info("Client connected: %s", request.sid)
 
 @socketio.on('join')
 def on_join(data):
     room = data.get("room", "default")
-    for r in list(group_games.keys()):
-        if not group_games[r]["players"]:
-            del group_games[r]
-    
-    if room not in group_games and len(group_games) >= MAX_ROOMS:
-        emit('join_error', {"message": "Maximum of 10 active rooms reached. Join an existing room."}, room=request.sid)
-        return {"success": False}
-    
-    if room in group_games and len(group_games[room]["players"]) >= MAX_PLAYERS_PER_ROOM:
-        emit('join_error', {"message": f"Room '{room}' is full (max 5 players)."}, room=request.sid)
-        return {"success": False}
-    
     if room not in group_games:
         group_games[room] = new_game_state()
     game_state = group_games[room]
@@ -86,9 +57,7 @@ def on_join(data):
         game_state["players"][request.sid] = {"builder_ingredients": []}
     join_room(room)
     socketio.emit('game_state', game_state, room=room)
-    socketio.emit('room_list', {'rooms': {r: len(group_games[r]["players"]) for r in group_games}}, broadcast=True)
     logging.info("Client %s joined room %s", request.sid, room)
-    return {"success": True}
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -98,12 +67,9 @@ def on_disconnect():
         game_state = group_games.get(room)
         if game_state and sid in game_state["players"]:
             del game_state["players"][sid]
-            if not game_state["players"]:
-                del group_games[room]
         del player_group[sid]
         socketio.emit('game_state', game_state, room=room)
-        socketio.emit('room_list', {'rooms': {r: len(group_games[r]["players"]) for r in group_games}}, broadcast=True)
-        logging.info("Client disconnected: %s from room %s", sid, room)
+        logging.info("Client disconnected: %s", sid)
 
 @socketio.on('time_request')
 def on_time_request():
