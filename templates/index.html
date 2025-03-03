@@ -1,477 +1,705 @@
-import eventlet
-
-eventlet.monkey_patch()
-
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, join_room
-import redis
-import time
-import uuid
-import logging
-import random
-import os
-import json
-
-# Minimal logging to save resources
-logging.basicConfig(level=logging.INFO)
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret!')
-redis_url = os.getenv('REDIS_URL', 'redis://red-cv2qp25umphs739tuhrg:6379')
-socketio = SocketIO(app, cors_allowed_origins="*", message_queue=redis_url)
-
-# Redis client for key-value and Pub/Sub
-redis_client = redis.Redis.from_url(redis_url, decode_responses=True)
-pubsub = redis_client.pubsub()
-
-# In-memory tracking (fallback if Redis resets, since no persistence)
-player_group = {}
-
-
-def new_game_state():
-    return {
-        "players": {},
-        "prepared_ingredients": [],
-        "built_pizzas": [],
-        "oven": [],
-        "completed_pizzas": [],
-        "wasted_pizzas": [],
-        "round": 1,
-        "max_rounds": 3,
-        "current_phase": "waiting",
-        "max_pizzas_in_oven": 3,
-        "round_duration": 420,
-        "oven_on": False,
-        "oven_timer_start": None,
-        "round_start_time": None,
-        "debrief_duration": 180,
-        "customer_orders": [],
-        "pending_orders": []
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kanban Pizza</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="static/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="static/favicon-16x16.png">
+  <link rel="manifest" href="static/site.webmanifest">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Sigmar&display=swap" rel="stylesheet">
+  <style>
+    body {
+      position: relative;
+      background: #f8f9fa;
+      color: #333;
+      min-height: 100vh;
+      background-color: #DFDBE5;
+      background: url('static/tile10.svg') repeat center center;
+      background-size: 256px 256px;
+      font-family: "Roboto Condensed", serif;
+    }
+    h1, h2, h3, h4, h5 {
+      font-family: "Sigmar", serif;
     }
 
+    .instructions-container {
+  margin-top: 20px;
+}
 
-def get_game_state(room):
-    state = redis_client.get(f"game:{room}")
-    if state:
-        return json.loads(state)
-    return new_game_state()
+.card {
+  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white for contrast */
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
+.card-title {
+  font-family: "Sigmar", serif; /* Matches your heading font */
+  font-size: 1.25rem;
+  margin-bottom: 10px;
+  color: #333;
+}
 
-def set_game_state(room, state):
-    redis_client.set(f"game:{room}", json.dumps(state))
+.card-body ul {
+  font-family: "Roboto Condensed", sans-serif; /* Matches your body font */
+  font-size: 1rem;
+  color: #555;
+  padding-left: 0;
+}
 
+.card-body li {
+  margin-bottom: 5px;
+}
 
-def publish_event(room, event_type, data):
-    event = json.dumps({"type": event_type, "data": data})
-    redis_client.publish(f"room:{room}", event)
+.card-body strong {
+  color: #007bff; /* Bootstrap primary color for emphasis */
+}
+    .game-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .btn-custom {
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    .timer-container {
+      text-align: center;
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+    .stopwatch {
+      min-width: 150px;
+    }
+    .oven {
+      min-width: 150px;
+    }
+    .oven-active {
+      background: rgba(255, 165, 0, 0.8);
+    }
+    .timer, .oven-timer {
+      font-family: "Orbitron", sans-serif;
+      font-size: 1.2rem;
+      white-space: pre-line;
+    }
+    #messages {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+      min-height: 60px;
+    }
+    #messages .title {
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    #messages .content {
+      font-size: 0.9rem;
+    }
+    .ingredient {
+      padding: 5px 10px;
+      margin: 2px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: move;
+    }
+    .ingredient.selected {
+      border: 2px solid #007bff;
+    }
+    .order-card {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 5px;
+      margin: 5px;
+      width: 150px;
+      text-align: center;
+    }
+    .order-id {
+      font-size: 0.8rem;
+      color: #555;
+    }
+    .order-ingredients {
+      font-size: 0.9rem;
+    }
+    .order-emoji {
+      font-size: 1.2rem;
+    }
+    .emoji-wrapper {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .emoji {
+      font-size: 1.5rem;
+      margin: 0 2px;
+    }
+    .undercooked { color: #87CEEB; }
+    .cooked { color: #FFD700; }
+    .burnt { color: #8B0000; }
+    .invalid, .unmatched { color: #808080; }
+  </style>
+</head>
+<body>
+  <div class="container game-container">
+    <header class="d-flex justify-content-between align-items-center">
+      <h1 class="h3">🍕 Kanban Pizza</h1>
+    </header>
+    <nav class="d-flex flex-column mb-3">
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <div>
+          <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
+          <button id="oven-on" class="btn btn-success btn-custom">Turn Oven On</button>
+          <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
+          <button id="instructions-btn" class="btn btn-secondary btn-custom">Instructions</button>
+        </div>
+        <div class="d-flex align-items-center">
+          <div id="oven-container" class="timer-container oven me-3">
+            <span id="oven-timer" class="oven-timer">Oven Time:</span>
+          </div>
+          <div class="timer-container stopwatch">
+            <span id="timer" class="timer">Round Time:</span>
+          </div>
+        </div>
+      </div>
+      <div id="messages">
+        <div class="title">ROOM MESSAGES:</div>
+        <div class="content"></div>
+      </div>
+    </nav>
+    <main>
+      <div id="customer-orders" class="mb-3" style="display: none;">
+        <h4>Customer Orders (<span id="order-count">0</span>)</h4>
+        <div id="orders-list" class="d-flex flex-wrap border p-2" style="min-height: 50px; border: solid #4A4A4A!important; overflow-y: auto; max-height: 200px;"></div>
+      </div>
+      <div id="game-area" class="mb-3" style="display: none;">
+        <div class="row">
+          <div class="col-md-6">
+            <h2>Prepare Ingredients</h2>
+            <div id="prepare-buttons" class="mb-3">
+              <button onclick="prepareIngredient('base')" class="btn btn-outline-primary btn-custom">Make Base</button>
+              <button onclick="prepareIngredient('sauce')" class="btn btn-outline-info btn-custom">Pour Sauce</button>
+              <button onclick="prepareIngredient('ham')" class="btn btn-outline-danger btn-custom">Chop Ham</button>
+              <button onclick="prepareIngredient('pineapple')" class="btn btn-outline-warning btn-custom">Chop Pineapple</button>
+            </div>
+            <h4>Shared Ingredients</h4>
+            <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;border: solid #4A4A4A!important;"></div>
+            <h4 id="builder-heading">Your Pizza Builder</h4>
+            <div id="pizza-builder" ondrop="dropToBuilder(event)" ondragover="allowDrop(event)" class="flex-wrap border p-2 mb-3" style="min-height: 100px;border: solid #4A4A4A!important; display: flex;"></div>
+            <button id="submit-pizza" class="btn btn-primary btn-custom" style="display: none;">Submit Pizza</button>
+            <div id="pizza-builders-container" class="row" style="display: none;"></div>
+          </div>
+          <div class="col-md-6">
+            <h2>Pizza Status</h2>
+            <div class="mb-2">
+              <h5>Built Pizzas</h5>
+              <div id="built-pizzas" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+            </div>
+            <div class="mb-2">
+              <h5>Oven</h5>
+              <div id="oven" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+            </div>
+            <div class="mb-2">
+              <h5>Completed Pizzas</h5>
+              <div id="completed" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+            </div>
+            <div class="mb-2">
+              <h5>Wasted Pizzas</h5>
+              <div id="wasted" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
+  <!-- Room Modal -->
+  <div class="modal" tabindex="-1" id="roomModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Join a Room</h5>
+        </div>
+        <div class="modal-body">
+          <form id="join-form">
+            <div class="mb-3">
+              <label for="room-input" class="form-label">Room Name</label>
+              <input type="text" class="form-control" id="room-input" placeholder="Enter room name (or leave blank for default)">
+            </div>
+            <button type="submit" class="btn btn-primary">Join</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+  <!-- Instructions Modal -->
+  <div class="modal" tabindex="-1" id="modal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Instructions</h5>
+          <button type="button" class="btn-close" id="modal-close" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="container instructions-container">
+            <div class="row row-cols-1 row-cols-md-3 g-3">
+              <!-- Round 1 Card -->
+              <div class="col">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Round 1: Basic Workflow</h5>
+                    <ul class="list-unstyled">
+                      <li><strong>Prep:</strong> Add to shared pool.</li>
+                      <li><strong>Build:</strong> Valid = 🍕 + 🥓 or 🍍.</li>
+                      <li><strong>Submit:</strong> ✓ or 🚫.</li>
+                      <li><strong>Bake:</strong> Oven WIP = 3 (max baking).</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <!-- Round 2 Card -->
+              <div class="col">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Round 2: Collaboration</h5>
+                    <ul class="list-unstyled">
+                      <li><strong>Team Up:</strong> Use shared builders.</li>
+                      <li><strong>Coordinate:</strong> Speed up valid builds.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <!-- Round 3 Card -->
+              <div class="col">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Round 3: Customer Orders</h5>
+                    <ul class="list-unstyled">
+                      <li><strong>Match Orders:</strong> Build exact pizzas.</li>
+                      <li><strong>Score:</strong> Only matched pizzas count.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
+        </div>
+      </div>
+    </div>
+  </div>
 
-@socketio.on('connect')
-def on_connect():
-    logging.info("Client connected: %s", request.sid)
+  <!-- Debrief Modal -->
+  <div class="modal fade" id="debriefModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Round Debrief</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Completed Pizzas:</strong> <span id="debrief-pizzas-completed">0</span></p>
+          <p><strong>Wasted Pizzas:</strong> <span id="debrief-pizzas-wasted">0</span></p>
+          <p><strong>Unsold Pizzas:</strong> <span id="debrief-pizzas-unsold">0</span></p>
+          <p><strong>Ingredients Left:</strong> <span id="debrief-ingredients-left">0</span></p>
+          <p id="fulfilled-orders" style="display: none;"><strong>Fulfilled Orders:</strong> <span id="debrief-fulfilled-orders">0</span></p>
+          <p id="remaining-orders" style="display: none;"><strong>Remaining Orders:</strong> <span id="debrief-remaining-orders">0</span></p>
+          <p id="unmatched-pizzas" style="display: none;"><strong>Unmatched Pizzas:</strong> <span id="debrief-unmatched-pizzas">0</span></p>
+          <p><strong>Score:</strong> <span id="debrief-score">0</span></p>
+          <hr>
+          <p id="debrief-question">Reflect.</p>
+          <p><em id="debrief-quote">"Continuous improvement."</em></p>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    var socket = io();
+    var myRoom = "";
+    var builderIngredients = [];
+    var touchSelectedIngredient = null;
+    var ingredientEmoji = {
+      "base": "🟡", "sauce": "🔴", "ham": "🥓", "pineapple": "🍍"
+    };
+    var orderEmoji = {
+      "ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
+      "pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>',
+      "ham & pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span><span class="emoji">🍍</span></div>',
+      "light ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
+      "light pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>',
+      "plain": '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>',
+      "heavy ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
+      "heavy pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>'
+    };
+    var state = {};
 
-@socketio.on('join')
-def on_join(data):
-    room = data.get("room", "default")
-    player_group[request.sid] = room
-    game_state = get_game_state(room)
-    if request.sid not in game_state["players"]:
-        game_state["players"][request.sid] = {"builder_ingredients": []}
-    set_game_state(room, game_state)
-    join_room(room)
-    pubsub.subscribe(f"room:{room}")
-    emit('game_state', game_state)  # Initial full state
-    logging.info("Client %s joined room %s", request.sid, room)
+    var hasJoined = false;
+    var roomModal = null;
+    document.addEventListener('DOMContentLoaded', function() {
+      roomModal = new bootstrap.Modal(document.getElementById('roomModal'), { backdrop: 'static', keyboard: false });
+    });
 
+    setInterval(() => socket.emit('time_request'), 1000);
 
-@socketio.on('disconnect')
-def on_disconnect():
-    sid = request.sid
-    room = player_group.get(sid)
-    if room:
-        game_state = get_game_state(room)
-        if sid in game_state["players"]:
-            del game_state["players"][sid]
-        set_game_state(room, game_state)
-        publish_event(room, "game_state_update", {"players": game_state["players"]})
-        del player_group[sid]
-    logging.info("Client disconnected: %s", sid)
+    socket.on('connect', function() {
+      if (!hasJoined) roomModal.show();
+    });
 
+    document.getElementById("join-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      myRoom = document.getElementById("room-input").value || "default";
+      hasJoined = true;
+      socket.emit('join', { room: myRoom });
+      roomModal.hide();
+      setTimeout(() => document.querySelectorAll(".modal-backdrop").forEach(el => el.remove()), 2000);
+    });
 
-@socketio.on('time_request')
-def on_time_request():
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
+    var modalEl = document.getElementById("modal");
+    var modal = new bootstrap.Modal(modalEl);
+    document.getElementById("instructions-btn").addEventListener("click", () => modal.show());
+    document.getElementById("modal-close").addEventListener("click", () => modal.hide());
 
-    def process_time_request():
-        round_time_remaining = 0
-        if game_state["current_phase"] == "round" and game_state["round_start_time"]:
-            elapsed = time.time() - game_state["round_start_time"]
-            round_time_remaining = max(0, int(game_state["round_duration"] - elapsed))
-            if game_state["round"] == 3 and game_state["pending_orders"]:
-                current_time = elapsed
-                pending_orders = game_state["pending_orders"]
-                orders_to_deliver = []
-                for order in pending_orders[:]:
-                    if order["arrival_time"] <= current_time:
-                        orders_to_deliver.append(order)
-                        game_state["pending_orders"].remove(order)
-                    if len(orders_to_deliver) >= 10:
-                        game_state["customer_orders"].extend(orders_to_deliver)
-                        publish_event(room, "new_orders", orders_to_deliver)
-                        orders_to_deliver = []
-                if orders_to_deliver:
-                    game_state["customer_orders"].extend(orders_to_deliver)
-                    publish_event(room, "new_orders", orders_to_deliver)
-                set_game_state(room, game_state)
-        elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
-            elapsed = time.time() - game_state["debrief_start_time"]
-            round_time_remaining = max(0, int(game_state["debrief_duration"] - elapsed))
+    function allowDrop(ev) { ev.preventDefault(); }
+    function drag(ev) {
+      ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
+      ev.dataTransfer.setData("ingredient_type", ev.target.dataset.type);
+    }
+    function dropToBuilder(ev) {
+      ev.preventDefault();
+      var ingredient_id = ev.dataTransfer.getData("ingredient_id");
+      var ingredient_type = ev.dataTransfer.getData("ingredient_type");
+      socket.emit('take_ingredient', { ingredient_id: ingredient_id });
+      if (state.round === 1) {
+        builderIngredients.push({ id: ingredient_id, type: ingredient_type });
+        updateBuilderDisplay();
+      }
+    }
+    function dropToSharedBuilder(ev, sid) {
+      ev.preventDefault();
+      var ingredient_id = ev.dataTransfer.getData("ingredient_id");
+      socket.emit('take_ingredient', { ingredient_id: ingredient_id, target_sid: sid });
+    }
+    function updateBuilderDisplay() {
+      var builderDiv = document.getElementById("pizza-builder");
+      builderDiv.innerHTML = "";
+      builderIngredients.forEach(ing => {
+        var item = document.createElement("div");
+        item.classList.add("ingredient");
+        item.innerText = ingredientEmoji[ing.type] || ing.type;
+        builderDiv.appendChild(item);
+      });
+    }
+    function prepareIngredient(type) {
+      socket.emit('prepare_ingredient', { ingredient_type: type });
+    }
 
-        oven_time = 0
-        if game_state["oven_on"] and game_state["oven_timer_start"]:
-            oven_time = int(time.time() - game_state["oven_timer_start"])
+    function renderPizzaBuilders(players) {
+      var container = document.getElementById("pizza-builders-container");
+      container.innerHTML = "";
+      Object.keys(players).forEach((sid, index) => {
+        var colDiv = document.createElement("div");
+        colDiv.classList.add("col-md-4");
+        var builderDiv = document.createElement("div");
+        builderDiv.classList.add("pizza-builder-container");
+        builderDiv.innerHTML = `<h5>Builder #${index + 1}</h5>`;
+        var ingredientsDiv = document.createElement("div");
+        ingredientsDiv.classList.add("d-flex", "flex-wrap", "pizza-builder-dropzone");
+        ingredientsDiv.setAttribute("ondrop", `dropToSharedBuilder(event, '${sid}')`);
+        ingredientsDiv.setAttribute("ondragover", "allowDrop(event)");
+        players[sid]["builder_ingredients"].forEach(ing => {
+          var item = document.createElement("div");
+          item.classList.add("ingredient");
+          item.innerText = ingredientEmoji[ing.type] || ing.type;
+          ingredientsDiv.appendChild(item);
+        });
+        builderDiv.appendChild(ingredientsDiv);
+        var submitBtn = document.createElement("button");
+        submitBtn.className = "btn btn-primary btn-custom mt-2";
+        submitBtn.innerText = "Submit Pizza";
+        submitBtn.onclick = () => socket.emit('build_pizza', { player_sid: sid });
+        builderDiv.appendChild(submitBtn);
+        colDiv.appendChild(builderDiv);
+        container.appendChild(colDiv);
 
-        emit('time_response', {
-            "roundTimeRemaining": round_time_remaining,
-            "ovenTime": oven_time,
-            "phase": game_state["current_phase"]
-        })
-
-    eventlet.spawn(process_time_request)
-
-
-@socketio.on('prepare_ingredient')
-def on_prepare_ingredient(data):
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "round":
-        return
-    ingredient_type = data.get("ingredient_type")
-    if ingredient_type not in ["base", "sauce", "ham", "pineapple"]:
-        emit('error', {"message": "Invalid ingredient type"})
-        return
-    prepared_id = str(uuid.uuid4())[:8]
-    item = {"id": prepared_id, "type": ingredient_type}
-    game_state["prepared_ingredients"].append(item)
-    set_game_state(room, game_state)
-    publish_event(room, "ingredient_prepared", item)
-
-
-@socketio.on('take_ingredient')
-def on_take_ingredient(data):
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "round":
-        return
-    ingredient_id = data.get("ingredient_id")
-    target_sid = data.get("target_sid")
-    taken = next((ing for ing in game_state["prepared_ingredients"] if ing["id"] == ingredient_id), None)
-    if taken:
-        game_state["prepared_ingredients"].remove(taken)
-        if game_state["round"] > 1 and target_sid in game_state["players"]:
-            game_state["players"][target_sid]["builder_ingredients"].append(taken)
-        set_game_state(room, game_state)
-        publish_event(room, "ingredient_removed", {"ingredient_id": ingredient_id})
-    else:
-        emit('error', {"message": "Ingredient not available."})
-
-
-@socketio.on('build_pizza')
-def on_build_pizza(data):
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "round":
-        return
-
-    if "ingredients" in data:
-        builder_ingredients = data.get("ingredients", [])
-    else:
-        target_sid = data.get("player_sid", request.sid)
-        if target_sid not in game_state["players"]:
-            emit('build_error', {"message": "Target player not found."})
-            return
-        builder_ingredients = game_state["players"][target_sid]["builder_ingredients"]
-
-    if not builder_ingredients:
-        emit('build_error', {"message": "No ingredients provided."})
-        return
-
-    counts = {"base": 0, "sauce": 0, "ham": 0, "pineapple": 0}
-    for ing in builder_ingredients:
-        counts[ing["type"]] += 1
-
-    pizza_id = str(uuid.uuid4())[:8]
-    pizza = {"pizza_id": pizza_id, "ingredients": counts, "built_at": time.time(), "baking_time": 0}
-
-    if game_state["round"] < 3:
-        valid = counts["base"] == 1 and counts["sauce"] == 1 and (
-                (counts["ham"] == 4 and counts["pineapple"] == 0) or
-                (counts["ham"] == 2 and counts["pineapple"] == 2)
-        )
-        if not valid:
-            pizza["status"] = "invalid"
-            pizza[
-                "emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🚫</span></div>'
-            game_state["wasted_pizzas"].append(pizza)
-            set_game_state(room, game_state)
-            publish_event(room, "build_error", {"message": "Invalid combo: Wasted."})
-        else:
-            pizza_type = "bacon" if counts["ham"] == 4 else "pineapple"
-            pizza["type"] = pizza_type
-            pizza["emoji"] = (
-                '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>'
-                if pizza_type == "bacon" else
-                '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>'
-            )
-            game_state["built_pizzas"].append(pizza)
-            set_game_state(room, game_state)
-            publish_event(room, "pizza_built", pizza)
-    else:
-        matched_order = next(
-            (order for order in game_state["customer_orders"] if order["ingredients"] == counts),
-            None
-        )
-        if matched_order:
-            pizza["type"] = matched_order["type"]
-            pizza["order_id"] = matched_order["id"]
-            pizza["emoji"] = {
-                "ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>',
-                "pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>',
-                "ham & pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓🍍</span></div>',
-                "light ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓¹</span></div>',
-                "light pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍¹</span></div>',
-                "plain": '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>',
-                "heavy ham": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓⁶</span></div>',
-                "heavy pineapple": '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍⁶</span></div>'
-            }[matched_order["type"]]
-            game_state["customer_orders"].remove(matched_order)
-            game_state["built_pizzas"].append(pizza)
-            set_game_state(room, game_state)
-            publish_event(room, "order_fulfilled", {"order_id": matched_order["id"]})
-            publish_event(room, "pizza_built", pizza)
-        else:
-            pizza["status"] = "unmatched"
-            pizza[
-                "emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">❓</span></div>'
-            game_state["wasted_pizzas"].append(pizza)
-            set_game_state(room, game_state)
-            publish_event(room, "build_error", {"message": "No matching order."})
-
-    if game_state["round"] > 1 and "ingredients" not in data:
-        game_state["players"][target_sid]["builder_ingredients"] = []
-        set_game_state(room, game_state)
-        publish_event(room, "clear_shared_builder", {"player_sid": target_sid})
-
-
-@socketio.on('move_to_oven')
-def on_move_to_oven(data):
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "round" or game_state["oven_on"]:
-        emit('oven_error', {"message": "Oven is on or not in round."})
-        return
-    pizza_id = data.get("pizza_id")
-    pizza = next((p for p in game_state["built_pizzas"] if p["pizza_id"] == pizza_id), None)
-    if not pizza or len(game_state["oven"]) >= game_state["max_pizzas_in_oven"]:
-        emit('oven_error', {"message": "Oven full or pizza not found."})
-        return
-    game_state["built_pizzas"].remove(pizza)
-    pizza["oven_start"] = time.time()
-    game_state["oven"].append(pizza)
-    set_game_state(room, game_state)
-    publish_event(room, "pizza_moved_to_oven", pizza)
-
-
-@socketio.on('toggle_oven')
-def toggle_oven(data):
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "round":
-        return
-    desired_state = data.get("state")
-    if desired_state == "on" and not game_state["oven_on"]:
-        game_state["oven_on"] = True
-        game_state["oven_timer_start"] = time.time()
-        set_game_state(room, game_state)
-        publish_event(room, "oven_toggled", {"state": "on"})
-    elif desired_state == "off" and game_state["oven_on"]:
-        elapsed = time.time() - game_state["oven_timer_start"]
-        for pizza in game_state["oven"]:
-            pizza["baking_time"] += elapsed
-            if pizza["baking_time"] < 30:
-                pizza["status"] = "undercooked"
-                game_state["wasted_pizzas"].append(pizza)
-            elif 30 <= pizza["baking_time"] <= 45:
-                pizza["status"] = "cooked"
-                game_state["completed_pizzas"].append(pizza)
-            else:
-                pizza["status"] = "burnt"
-                game_state["wasted_pizzas"].append(pizza)
-        game_state["oven"] = []
-        game_state["oven_on"] = False
-        game_state["oven_timer_start"] = None
-        set_game_state(room, game_state)
-        publish_event(room, "oven_toggled", {"state": "off"})
-
-
-@socketio.on('start_round')
-def on_start_round(data):
-    room = player_group.get(request.sid, "default")
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "waiting":
-        return
-    game_state["current_phase"] = "round"
-    game_state["round_start_time"] = time.time()
-    game_state["prepared_ingredients"] = []
-    game_state["built_pizzas"] = []
-    game_state["oven"] = []
-    game_state["completed_pizzas"] = []
-    game_state["wasted_pizzas"] = []
-    game_state["oven_on"] = False
-    game_state["oven_timer_start"] = None
-    game_state["customer_orders"] = []
-    game_state["pending_orders"] = []
-    for sid in game_state["players"]:
-        game_state["players"][sid]["builder_ingredients"] = []
-    set_game_state(room, game_state)
-    if game_state["round"] == 3:
-        game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
-        set_game_state(room, game_state)
-    publish_event(room, "round_started", {
-        "round": game_state["round"],
-        "duration": game_state["round_duration"],
-        "customer_orders": game_state["customer_orders"]
-    })
-    eventlet.spawn(round_timer, game_state["round_duration"], room)
-
-
-def generate_customer_orders(round_duration):
-    order_types = [
-        {"type": "ham", "ingredients": {"base": 1, "sauce": 1, "ham": 4, "pineapple": 0}},
-        {"type": "pineapple", "ingredients": {"base": 1, "sauce": 1, "ham": 0, "pineapple": 4}},
-        {"type": "ham & pineapple", "ingredients": {"base": 1, "sauce": 1, "ham": 2, "pineapple": 2}},
-        {"type": "light ham", "ingredients": {"base": 1, "sauce": 1, "ham": 1, "pineapple": 0}},
-        {"type": "light pineapple", "ingredients": {"base": 1, "sauce": 1, "ham": 0, "pineapple": 1}},
-        {"type": "plain", "ingredients": {"base": 1, "sauce": 1, "ham": 0, "pineapple": 0}},
-        {"type": "heavy ham", "ingredients": {"base": 1, "sauce": 1, "ham": 6, "pineapple": 0}},
-        {"type": "heavy pineapple", "ingredients": {"base": 1, "sauce": 1, "ham": 0, "pineapple": 6}}
-    ]
-    orders = []
-    max_order_time = round_duration - 45
-    for i in range(50):
-        order = {"id": str(uuid.uuid4())[:8], **random.choice(order_types)}
-        order["arrival_time"] = i * (max_order_time / 49)
-        orders.append(order)
-    return orders
-
-
-def round_timer(duration, room):
-    eventlet.sleep(duration)
-    end_round(room)
-
-
-def end_round(room):
-    game_state = get_game_state(room)
-    if game_state["current_phase"] != "round":
-        return
-    game_state["current_phase"] = "debrief"
-    game_state["debrief_start_time"] = time.time()
-    result = compute_round_result(game_state)
-    set_game_state(room, game_state)
-    publish_event(room, "round_ended", result)
-    if game_state["round"] < game_state["max_rounds"]:
-        game_state["round"] += 1
-        eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
-    else:
-        eventlet.spawn(final_debrief_timer, game_state["debrief_duration"], room)
-
-
-def compute_round_result(game_state):
-    leftover_ingredients = len(game_state["prepared_ingredients"])
-    unsold_pizzas = len(game_state["built_pizzas"]) + len(game_state["oven"])
-    completed_count = len(game_state["completed_pizzas"])
-    wasted_count = len(game_state["wasted_pizzas"])
-    if game_state["round"] == 3:
-        fulfilled_orders = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" in pizza)
-        unmatched_pizzas = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
-        remaining_orders = len(game_state["customer_orders"]) + len(game_state["pending_orders"])
-        score = fulfilled_orders * 20 - unmatched_pizzas * 10 - wasted_count * 10 - unsold_pizzas * 5 - leftover_ingredients - remaining_orders * 15
-        return {
-            "completed_pizzas_count": completed_count,
-            "wasted_pizzas_count": wasted_count,
-            "unsold_pizzas_count": unsold_pizzas,
-            "ingredients_left_count": leftover_ingredients,
-            "fulfilled_orders_count": fulfilled_orders,
-            "remaining_orders_count": remaining_orders,
-            "unmatched_pizzas_count": unmatched_pizzas,
-            "score": score
+        if ('ontouchstart' in window) {
+          ingredientsDiv.addEventListener("touchend", ev => {
+            ev.preventDefault();
+            if (touchSelectedIngredient) {
+              socket.emit('take_ingredient', { ingredient_id: touchSelectedIngredient.id, target_sid: sid });
+              touchSelectedIngredient = null;
+              document.querySelectorAll('.ingredient.selected').forEach(el => el.classList.remove('selected'));
+            }
+          });
         }
-    score = completed_count * 10 - wasted_count * 10 - unsold_pizzas * 5 - leftover_ingredients
-    return {
-        "completed_pizzas_count": completed_count,
-        "wasted_pizzas_count": wasted_count,
-        "unsold_pizzas_count": unsold_pizzas,
-        "ingredients_left_count": leftover_ingredients,
-        "score": score
+      });
     }
 
+    document.getElementById("submit-pizza").addEventListener("click", function() {
+      if (builderIngredients.length === 0) {
+        alert("No ingredients selected for pizza!");
+        return;
+      }
+      socket.emit('build_pizza', { ingredients: builderIngredients });
+      builderIngredients = [];
+      updateBuilderDisplay();
+    });
 
-def debrief_timer(duration, room):
-    eventlet.sleep(duration)
-    game_state = get_game_state(room)
-    game_state["current_phase"] = "round"
-    game_state["round_start_time"] = time.time()
-    game_state["debrief_start_time"] = None
-    game_state["prepared_ingredients"] = []
-    game_state["built_pizzas"] = []
-    game_state["oven"] = []
-    game_state["completed_pizzas"] = []
-    game_state["wasted_pizzas"] = []
-    game_state["oven_on"] = False
-    game_state["oven_timer_start"] = None
-    game_state["customer_orders"] = []
-    game_state["pending_orders"] = []
-    for sid in game_state["players"]:
-        game_state["players"][sid]["builder_ingredients"] = []
-    if game_state["round"] == 3:
-        game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
-    set_game_state(room, game_state)
-    publish_event(room, "round_started", {
-        "round": game_state["round"],
-        "duration": game_state["round_duration"],
-        "customer_orders": game_state["customer_orders"]
-    })
-    eventlet.spawn(round_timer, game_state["round_duration"], room)
+    if ('ontouchstart' in window) {
+      document.getElementById("pizza-builder").addEventListener("touchend", ev => {
+        ev.preventDefault();
+        if (touchSelectedIngredient && state.round === 1) {
+          socket.emit('take_ingredient', { ingredient_id: touchSelectedIngredient.id });
+          builderIngredients.push({ id: touchSelectedIngredient.id, type: touchSelectedIngredient.type });
+          updateBuilderDisplay();
+          document.querySelectorAll('.ingredient.selected').forEach(el => el.classList.remove('selected'));
+          touchSelectedIngredient = null;
+        }
+      });
+    }
 
+    function updateGameState(newState) {
+      state = newState;
+      console.log("Game State:", state);
+      document.getElementById("game-area").style.display = state.current_phase === "round" ? "block" : "none";
+      document.getElementById("start-round").style.display = state.current_phase === "round" ? "none" : "inline-block";
+      updateVisibility();
 
-def final_debrief_timer(duration, room):
-    eventlet.sleep(duration)
-    game_state = get_game_state(room)
-    game_state["current_phase"] = "waiting"
-    game_state["round"] = 1
-    game_state["prepared_ingredients"] = []
-    game_state["built_pizzas"] = []
-    game_state["oven"] = []
-    game_state["completed_pizzas"] = []
-    game_state["wasted_pizzas"] = []
-    game_state["oven_on"] = False
-    game_state["oven_timer_start"] = None
-    game_state["round_start_time"] = None
-    game_state["debrief_start_time"] = None
-    game_state["customer_orders"] = []
-    game_state["pending_orders"] = []
-    for sid in game_state["players"]:
-        game_state["players"][sid]["builder_ingredients"] = []
-    set_game_state(room, game_state)
-    publish_event(room, "game_reset", game_state)
+      var ordersDiv = document.getElementById("customer-orders");
+      var ordersList = document.getElementById("orders-list");
+      var orderCount = document.getElementById("order-count");
+      if (state.round === 3 && state.current_phase === "round") {
+        ordersDiv.style.display = "block";
+        ordersList.innerHTML = "";
+        state.customer_orders.forEach(order => {
+          var card = document.createElement("div");
+          card.classList.add("order-card");
+          card.setAttribute("data-order-id", order.id);
+          card.innerHTML = `
+            <div class="order-id">Order: ${order.id.slice(0, 6)}</div>
+            <div class="order-ingredients">
+              ${order.ingredients.base ? `${ingredientEmoji["base"]}x${order.ingredients.base}` : ""}
+              ${order.ingredients.sauce ? `${ingredientEmoji["sauce"]}x${order.ingredients.sauce}` : ""}
+              ${order.ingredients.ham ? `${ingredientEmoji["ham"]}x${order.ingredients.ham}` : ""}
+              ${order.ingredients.pineapple ? `${ingredientEmoji["pineapple"]}x${order.ingredients.pineapple}` : ""}
+            </div>
+            <div class="order-emoji">${orderEmoji[order.type] || '<div class="emoji-wrapper"><span class="emoji">🍕</span></div>'}</div>
+          `;
+          ordersList.appendChild(card);
+        });
+        orderCount.innerText = state.customer_orders.length;
+      } else {
+        ordersDiv.style.display = "none";
+        orderCount.innerText = "0";
+      }
 
+      var poolDiv = document.getElementById("prepared-pool");
+      poolDiv.innerHTML = "";
+      state.prepared_ingredients.forEach(item => {
+        var div = document.createElement("div");
+        div.classList.add("ingredient");
+        div.setAttribute("draggable", "true");
+        div.setAttribute("data-id", item.id);
+        div.dataset.type = item.type;
+        div.innerText = ingredientEmoji[item.type] || item.type;
+        div.addEventListener("dragstart", drag);
+        if ('ontouchstart' in window) {
+          div.addEventListener("touchstart", ev => {
+            ev.preventDefault();
+            document.querySelectorAll('.ingredient.selected').forEach(el => el.classList.remove('selected'));
+            touchSelectedIngredient = { id: item.id, type: item.type };
+            div.classList.add("selected");
+          });
+        }
+        poolDiv.appendChild(div);
+      });
 
-if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+      function renderPizza(pizza, extraLabel) {
+        var div = document.createElement("div");
+        div.innerHTML = pizza.emoji || "Pizza " + pizza.pizza_id;
+        if (extraLabel) div.appendChild(document.createElement("span")).innerText = extraLabel;
+        if (pizza.status) div.classList.add(pizza.status);
+        return div;
+      }
+
+      var builtDiv = document.getElementById("built-pizzas");
+      builtDiv.innerHTML = "";
+      state.built_pizzas.forEach(pizza => {
+        var div = renderPizza(pizza, "");
+        var btn = document.createElement("button");
+        btn.className = "btn btn-sm btn-outline-primary ms-2";
+        btn.innerText = "Move to Oven";
+        btn.onclick = () => socket.emit('move_to_oven', { pizza_id: pizza.pizza_id });
+        div.appendChild(btn);
+        builtDiv.appendChild(div);
+      });
+
+      document.getElementById("oven").innerHTML = "";
+      state.oven.forEach(pizza => document.getElementById("oven").appendChild(renderPizza(pizza, " ")));
+
+      document.getElementById("completed").innerHTML = "";
+      state.completed_pizzas.forEach(pizza => document.getElementById("completed").appendChild(renderPizza(pizza, " ")));
+
+      document.getElementById("wasted").innerHTML = "";
+      state.wasted_pizzas.forEach(pizza => document.getElementById("wasted").appendChild(renderPizza(pizza, "")));
+    }
+
+    function updateVisibility() {
+      const pizzaBuilder = document.getElementById("pizza-builder");
+      const submitPizza = document.getElementById("submit-pizza");
+      const buildersContainer = document.getElementById("pizza-builders-container");
+      const builderHeading = document.getElementById("builder-heading");
+
+      if (state.round >= 1 && state.current_phase === "debrief" && state.round < state.max_rounds) {
+        pizzaBuilder.style.display = "none";
+        submitPizza.style.display = "none";
+        buildersContainer.style.display = "flex";
+        builderHeading.innerText = "Shared Pizza Builders";
+        renderPizzaBuilders(state.players);
+      } else if (state.round > 1) {
+        pizzaBuilder.style.display = "none";
+        submitPizza.style.display = "none";
+        buildersContainer.style.display = "flex";
+        builderHeading.innerText = "Shared Pizza Builders";
+        if (state.current_phase === "round") renderPizzaBuilders(state.players);
+      } else {
+        pizzaBuilder.style.display = "flex";
+        submitPizza.style.display = "inline-block";
+        buildersContainer.style.display = "none";
+        builderHeading.innerText = "Your Pizza Builder";
+      }
+    }
+
+    socket.on('game_state', updateGameState);
+
+    socket.on('time_response', function(data) {
+      document.getElementById("timer").innerText = data.phase === "debrief" ? `DEBRIEF:\n${data.roundTimeRemaining} sec` : `Round Time:\n${data.roundTimeRemaining} sec`;
+      document.getElementById("oven-timer").innerText = `Oven Time:\n${data.ovenTime} sec`;
+    });
+
+    socket.on('ingredient_prepared', function(item) {
+      state.prepared_ingredients.push(item);
+      updateGameState(state);
+      updateMessage(`Ingredient prepared: ${ingredientEmoji[item.type] || item.type}`);
+    });
+
+    socket.on('ingredient_removed', function(data) {
+      state.prepared_ingredients = state.prepared_ingredients.filter(ing => ing.id !== data.ingredient_id);
+      updateGameState(state);
+    });
+
+    socket.on('pizza_built', function(pizza) {
+      state.built_pizzas.push(pizza);
+      updateGameState(state);
+      updateMessage(`Pizza built: ${pizza.pizza_id}`);
+    });
+
+    socket.on('build_error', function(data) {
+      updateMessage(`Build Error: ${data.message}`);
+    });
+
+    socket.on('pizza_moved_to_oven', function(pizza) {
+      state.built_pizzas = state.built_pizzas.filter(p => p.pizza_id !== pizza.pizza_id);
+      state.oven.push(pizza);
+      updateGameState(state);
+      updateMessage(`Pizza moved to oven: ${pizza.pizza_id}`);
+    });
+
+    socket.on('oven_toggled', function(data) {
+      state.oven_on = data.state === "on";
+      if (data.state === "on") {
+        document.getElementById("oven-container").classList.add("oven-active");
+      } else {
+        state.oven = [];
+        document.getElementById("oven-container").classList.remove("oven-active");
+      }
+      updateGameState(state);
+      updateMessage(data.state === "on" ? "Oven turned ON." : "Oven turned OFF.");
+    });
+
+    socket.on('oven_error', function(data) {
+      updateMessage(`Oven Error: ${data.message}`);
+    });
+
+    socket.on('clear_shared_builder', function(data) {
+      state.players[data.player_sid]["builder_ingredients"] = [];
+      renderPizzaBuilders(state.players);
+    });
+
+    socket.on('new_orders', function(orders) {
+      state.customer_orders.push(...orders);
+      updateGameState(state);
+      updateMessage(`New order received: ${orders[0].type}`);
+    });
+
+    socket.on('order_fulfilled', function(data) {
+      state.customer_orders = state.customer_orders.filter(order => order.id !== data.order_id);
+      updateGameState(state);
+      updateMessage(`Order fulfilled: ${data.order_id}`);
+    });
+
+    socket.on('round_started', function(data) {
+      state.round = data.round;
+      state.current_phase = "round";
+      state.customer_orders = data.customer_orders;
+      updateGameState(state);
+      updateMessage(`Round ${data.round} started. Duration: ${data.duration} sec`);
+      bootstrap.Modal.getInstance(document.getElementById('debriefModal'))?.hide();
+    });
+
+    socket.on('round_ended', function(result) {
+      document.getElementById("debrief-pizzas-completed").innerText = result.completed_pizzas_count;
+      document.getElementById("debrief-pizzas-wasted").innerText = result.wasted_pizzas_count;
+      document.getElementById("debrief-pizzas-unsold").innerText = result.unsold_pizzas_count;
+      document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
+      document.getElementById("debrief-score").innerText = result.score;
+      if (state.round === 3) {
+        document.getElementById("fulfilled-orders").style.display = "block";
+        document.getElementById("remaining-orders").style.display = "block";
+        document.getElementById("unmatched-pizzas").style.display = "block";
+        document.getElementById("debrief-fulfilled-orders").innerText = result.fulfilled_orders_count || 0;
+        document.getElementById("debrief-remaining-orders").innerText = result.remaining_orders_count || 0;
+        document.getElementById("debrief-unmatched-pizzas").innerText = result.unmatched_pizzas_count || 0;
+      } else {
+        document.getElementById("fulfilled-orders").style.display = "none";
+        document.getElementById("remaining-orders").style.display = "none";
+        document.getElementById("unmatched-pizzas").style.display = "none";
+      }
+      const debriefContent = {
+        1: { question: "Reflect: How did you streamline your process?", quote: "“Working software is progress.” – Agile Manifesto" },
+        2: { question: "Reflect: How did collaboration impact production?", quote: "“Individuals over processes.” – Agile Manifesto" },
+        3: { question: "Reflect: How did orders change priorities?", quote: "“Customer collaboration over negotiation.” – Agile Manifesto" }
+      };
+      const content = debriefContent[state.round] || { question: "Reflect.", quote: "“Continuous improvement.”" };
+      document.getElementById("debrief-question").innerText = content.question;
+      document.getElementById("debrief-quote").innerText = content.quote;
+      new bootstrap.Modal(document.getElementById('debriefModal')).show();
+      updateVisibility();
+    });
+
+    socket.on('game_reset', function(newState) {
+      updateGameState(newState);
+      updateMessage("Round reset. Ready for a new round.");
+      bootstrap.Modal.getInstance(document.getElementById('debriefModal'))?.hide();
+    });
+
+    document.getElementById("oven-on").addEventListener("click", () => socket.emit('toggle_oven', { state: "on" }));
+    document.getElementById("oven-off").addEventListener("click", () => socket.emit('toggle_oven', { state: "off" }));
+    document.getElementById("start-round").addEventListener("click", () => socket.emit('start_round', {}));
+    window.addEventListener("beforeunload", () => socket.disconnect());
+
+    function updateMessage(text) {
+      document.querySelector("#messages .content").innerText = text;
+    }
+  </script>
+</body>
+</html>
