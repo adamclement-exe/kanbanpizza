@@ -7,16 +7,12 @@ import time
 import uuid
 import logging
 import random
-import os
 
-# Minimal logging to save resources
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret!')
-# Use Render free Redis URL, fallback for local testing
-redis_url = os.getenv('REDIS_URL', 'redis://red-cv2qp25umphs739tuhrg:6379')
-socketio = SocketIO(app, cors_allowed_origins="*", message_queue=redis_url)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 group_games = {}
 player_group = {}
@@ -53,7 +49,6 @@ def on_connect():
 @socketio.on('join')
 def on_join(data):
     room = data.get("room", "default")
-    # Pre-initialize room to reduce join-time lag
     if room not in group_games:
         group_games[room] = new_game_state()
     game_state = group_games[room]
@@ -61,7 +56,6 @@ def on_join(data):
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": []}
     join_room(room)
-    # Immediate emission to ensure client modal hides quickly
     socketio.emit('game_state', game_state, room=room)
     logging.info("Client %s joined room %s", request.sid, room)
 
@@ -101,10 +95,12 @@ def on_time_request():
                     for order in pending_orders[:]:
                         if order["arrival_time"] <= current_time:
                             orders_to_deliver.append(order)
-                            game_state["pending_orders"].remove(order)
                         if len(orders_to_deliver) >= 10:
                             game_state["customer_orders"].extend(orders_to_deliver)
-                            socketio.emit('new_orders', orders_to_deliver, room=room)
+                            for order in orders_to_deliver:
+                                game_state["pending_orders"].remove(order)
+                                socketio.emit('new_order', order, room=room)
+                                logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
                             socketio.emit('game_state_update', {
                                 "customer_orders": game_state["customer_orders"],
                                 "pending_orders": game_state["pending_orders"]
@@ -113,7 +109,10 @@ def on_time_request():
                             eventlet.sleep(0)
                     if orders_to_deliver:
                         game_state["customer_orders"].extend(orders_to_deliver)
-                        socketio.emit('new_orders', orders_to_deliver, room=room)
+                        for order in orders_to_deliver:
+                            game_state["pending_orders"].remove(order)
+                            socketio.emit('new_order', order, room=room)
+                            logging.info("Delivered order %s to room %s at %.2f seconds", order['id'], room, current_time)
                         socketio.emit('game_state_update', {
                             "customer_orders": game_state["customer_orders"],
                             "pending_orders": game_state["pending_orders"]
@@ -149,7 +148,7 @@ def on_prepare_ingredient(data):
         emit('error', {"message": "Invalid ingredient type"}, room=request.sid)
         return
     prepared_id = str(uuid.uuid4())[:8]
-    prepared_item = {"id": prepared_id, "type": ingredient_type}  # Trimmed to save memory
+    prepared_item = {"id": prepared_id, "type": ingredient_type, "prepared_by": room}
     game_state["prepared_ingredients"].append(prepared_item)
     socketio.emit('ingredient_prepared', prepared_item, room=room)
     socketio.emit('game_state', game_state, room=room)
@@ -340,14 +339,13 @@ def on_start_round(data):
         game_state["players"][sid]["builder_ingredients"] = []
 
     try:
-        logging.info("Starting round %d for room %s", game_state["round"], room)
         if game_state["round"] == 3:
             def set_orders():
                 try:
                     game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
                     socketio.emit('game_state', game_state, room=room)
                 except Exception as e:
-                    logging.error("Error setting orders: %s", e)
+                    logging.error("Error setting orders in Round 3: %s", e)
             eventlet.spawn(set_orders)
         else:
             socketio.emit('game_state', game_state, room=room)
@@ -376,7 +374,7 @@ def generate_customer_orders(round_duration):
     max_order_time = round_duration - 45
     for i in range(50):
         order = {"id": str(uuid.uuid4())[:8], **random.choice(order_types)}
-        order["arrival_time"] = i * (max_order_time / 49)
+        order["arrival_time"] = (i * (max_order_time / 49))
         orders.append(order)
     return orders
 
