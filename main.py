@@ -472,6 +472,32 @@ def final_debrief_timer(duration, room):
     set_game_state(room, game_state)
     publish_event(room, "game_reset", game_state)
 
+def start_pubsub_listener():
+    def listen():
+        pubsub = redis_client.pubsub()
+        subscribed_rooms = set()
+        while True:
+            # Update subscriptions based on active rooms
+            current_rooms = set(player_group.values())
+            new_rooms = current_rooms - subscribed_rooms
+            old_rooms = subscribed_rooms - current_rooms
+            for room in new_rooms:
+                pubsub.subscribe(f"room:{room}")
+            for room in old_rooms:
+                pubsub.unsubscribe(f"room:{room}")
+            subscribed_rooms = current_rooms
 
+            # Listen for messages
+            message = pubsub.get_message(timeout=1.0)
+            if message and message['type'] == 'message':
+                room = message['channel'].split(':')[1]
+                event_data = json.loads(message['data'])
+                socketio.emit(event_data['type'], event_data['data'], room=room)
+            eventlet.sleep(0.1)  # Yield to other green threads
+
+    eventlet.spawn(listen)
+
+# Start the listener when the app initializes
+start_pubsub_listener()
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
