@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 
 group_games = {}
 player_group = {}
@@ -65,11 +65,11 @@ def on_join(data):
 
     # Broadcast updated room list to all clients
     room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
-    socketio.emit('room_list', {"rooms": room_list}, broadcast=True)
+    socketio.emit('room_list', {"rooms": room_list})
 
 
 @socketio.on('disconnect')
-def on_disconnect():
+def on_disconnect(sid):
     sid = request.sid
     room = player_group.get(sid)  # Get the room the player was in
     if room:
