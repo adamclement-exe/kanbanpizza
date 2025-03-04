@@ -106,10 +106,7 @@ kanbanpizza/
 
 
 #testing notes -
-emoji overlays in oven are not working
-shared builders and pizza status areas should swap round
 room number limit not working
-padding on title
 
 
 ## License
