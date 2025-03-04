@@ -109,6 +109,10 @@ kanbanpizza/
 emoji overlays in oven are not working
 shared builders and pizza status areas should swap round
 onconnect problem with room modal showing - disconnect/reconnect issue
+enter room number should be enter room name
+padding on title
+
+#new code needed should be something like@
 
 socket.on('connect', function() {
   console.log("Connected to server. Initial connect:", isInitialConnect, "Room:", myRoom);
