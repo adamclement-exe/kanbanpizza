@@ -24,6 +24,9 @@
       font-family: "Roboto Condensed", serif;
       font-optical-sizing: auto;
     }
+    .minheight{
+    min-height:12vh!important;
+    }
     h1, h2, h3, h4, h5 {
       font-family: "Sigmar", serif;
       font-weight: 400;
@@ -122,7 +125,7 @@
       top: 0;
       left: 0;
     }
-    .emoji-wrapper .emoji:not(:first-child) {
+    .emoji-wrapper .emoji:not(:first-of-type)  {
       transform: scale(0.6);
       left: -0.2rem; /* Adjust to overlay neatly */
     }
@@ -196,6 +199,35 @@
       flex-wrap: wrap;
       justify-content: flex-start;
     }
+    .gridcontainer {
+    display: grid;
+  grid-template-columns: 1.4fr 0.2fr 1.4fr;
+  grid-template-rows: 0.6fr 1.8fr 0.1fr 1.4fr 0.2fr 1.7fr;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "buttons . ."
+    "ingredients . builders"
+    ". . ."
+    "built . oven"
+    ". . ."
+    "completed . wasted";
+}
+
+.buttons { grid-area: buttons; }
+
+.ingredients { grid-area: ingredients; }
+
+.builders { grid-area: builders; }
+
+.oven { grid-area: oven; }
+
+.built { grid-area: built; }
+
+.completed { grid-area: completed; }
+
+.wasted { grid-area: wasted; }
+
   </style>
 </head>
 <body>
@@ -207,10 +239,10 @@
     <nav class="d-flex flex-column mb-3">
       <div class="d-flex justify-content-between align-items-center w-100">
         <div>
-          <button id="start-round" class="btn btn-primary btn-custom">Start Round</button>
+          <button id="start-round" class="btn btn-warning btn-custom">Start Round</button>
           <button id="oven-on" class="btn btn-success btn-custom">Turn Oven On</button>
           <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
-          <button id="instructions-btn" class="btn btn-secondary btn-custom">Instructions</button>
+          <button id="instructions-btn" class="btn btn-info btn-custom">Instructions</button>
         </div>
         <div class="d-flex align-items-center">
           <div id="oven-container" class="timer-container oven me-3">
@@ -233,19 +265,22 @@
         <div id="orders-list" class="d-flex flex-wrap border p-2" style="min-height: 50px; border: solid #4A4A4A!important; overflow-y: auto; max-height: 200px;"></div>
       </div>
       <div id="game-area" class="mb-3" style="display: none;">
-        <div class="row">
-          <div class="col-md-6">
-            <h2>Prepare Ingredients</h2>
-            <div id="prepare-buttons" class="mb-3">
-              <button onclick="prepareIngredient('base')" class="btn btn-outline-primary btn-custom">Make Base</button>
-              <button onclick="prepareIngredient('sauce')" class="btn btn-outline-info btn-custom">Pour Sauce</button>
-              <button onclick="prepareIngredient('ham')" class="btn btn-outline-danger btn-custom">Chop Ham</button>
-              <button onclick="prepareIngredient('pineapple')" class="btn btn-outline-warning btn-custom">Chop Pineapple</button>
-            </div>
+        <div class="gridcontainer">
+          <div class="buttons">
+              <h2>Prepare Ingredients</h2>
+              <div id="prepare-buttons" class="mb-3">
+                <button onclick="prepareIngredient('base')" class="btn btn-outline-primary btn-custom">Make Base</button>
+                <button onclick="prepareIngredient('sauce')" class="btn btn-outline-primary btn-custom">Pour Sauce</button>
+                <button onclick="prepareIngredient('ham')" class="btn btn-outline-primary btn-custom">Chop Ham</button>
+                <button onclick="prepareIngredient('pineapple')" class="btn btn-outline-primary btn-custom">Chop Pineapple</button>
+              </div>
+          </div>
+          <div class="ingredients">
             <h4>Shared Ingredients</h4>
             <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;border: solid #4A4A4A!important;"></div>
-
-            <h4 id="builder-heading">Your Pizza Builder</h4>
+          </div>
+          <div class="builders">
+            <h2 id="builder-heading">Your Pizza Builder</h2>
             <div id="pizza-builder"
                  ondrop="dropToBuilder(event)"
                  ondragover="allowDrop(event)"
@@ -254,25 +289,21 @@
             <button id="submit-pizza" class="btn btn-primary btn-custom" style="display: none;">Submit Pizza</button>
             <div id="pizza-builders-container" class="row" style="display: none;"></div>
           </div>
-
-          <div class="col-md-6">
-            <h2>Pizza Status</h2>
-            <div class="mb-2">
-              <h5>Built Pizzas</h5>
-              <div id="built-pizzas" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
-            </div>
-            <div class="mb-2">
-              <h5>Oven</h5>
-              <div id="oven" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
-            </div>
-            <div class="mb-2">
-              <h5>Completed Pizzas</h5>
-              <div id="completed" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
-            </div>
-            <div class="mb-2">
-              <h5>Wasted Pizzas</h5>
-              <div id="wasted" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
-            </div>
+          <div class="oven">
+            <h5>Oven</h5>
+            <div id="oven" class="minheight d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+          </div>
+          <div class="built">
+            <h5>Built Pizzas</h5>
+            <div id="built-pizzas" class="minheight d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+          </div>
+          <div class="completed">
+            <h5>Completed Pizzas</h5>
+            <div id="completed" class="minheight d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
+          </div>
+          <div class="wasted">
+            <h5>Wasted Pizzas</h5>
+            <div id="wasted" class="minheight d-flex flex-wrap border p-2 mb-3" style="min-height: 5vh; border: solid #4A4A4A!important;"></div>
           </div>
         </div>
       </div>
