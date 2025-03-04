@@ -414,8 +414,42 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-  var socket = io({ transports: ['polling'] }); // Force polling to bypass WebSocket issues
-  var myRoom = "";
+  var socket = io({ transports: ['polling'], reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 1000 });
+var myRoom = localStorage.getItem('myRoom') || ""; // Persist room across reconnects
+var isInitialConnect = true;
+
+socket.on('connect', function() {
+  if (isInitialConnect) {
+    var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+    roomModal.show();
+    socket.emit('request_room_list');
+    isInitialConnect = false;
+  } else if (myRoom) {
+    // Rejoin the room silently on reconnect
+    socket.emit('join', { room: myRoom });
+    console.log("Reconnecting to room:", myRoom);
+  }
+});
+
+socket.on('disconnect', function() {
+  console.log("Disconnected from server");
+  updateMessage("Disconnected. Attempting to reconnect...");
+});
+
+socket.on('reconnect', function() {
+  console.log("Reconnected to server");
+  updateMessage("Reconnected to room " + myRoom);
+});
+
+document.getElementById("join-form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  myRoom = document.getElementById("room-input").value || "default";
+  localStorage.setItem('myRoom', myRoom); // Store room for reconnect
+  socket.emit('join', { room: myRoom });
+});
   var builderIngredients = [];
   var touchSelectedIngredient = null;
   var ingredientEmoji = {
@@ -458,14 +492,7 @@
     socket.emit('time_request');
   }, 1000);
 
-  socket.on('connect', function() {
-    var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
-      backdrop: 'static',
-      keyboard: false
-    });
-    roomModal.show();
-    socket.emit('request_room_list');
-  });
+
 
   socket.on('room_list', function(data) {
     var tbody = document.getElementById('room-table-body');
