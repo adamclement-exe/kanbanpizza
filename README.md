@@ -107,18 +107,5 @@ kanbanpizza/
 ## License
 This project is open-source under the MIT License. Feel free to use, modify, and share!
 
-## How to Use
-### Create the File Locally:
-1. Open a text editor (e.g., VS Code, Notepad).
-2. Copy the entire content from the code block above.
-3. Paste it into a new file named `README.md` in your `kanbanpizza` directory.
-4. Save the file.
-5. Add, commit, and push to GitHub:
-   ```bash
-   git add README.md
-   git commit -m "Add README for Kanban Pizza"
-   git push origin main
-   ```
-
 
 
