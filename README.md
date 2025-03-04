@@ -104,6 +104,46 @@ kanbanpizza/
 - **Emoji overlay alignment** may vary slightly across browsers; tested on Chrome.
 - **Render may log `[Errno 9] Bad file descriptor`** on shutdown, mitigated with graceful exit handling.
 
+
+#testing notes -
+emoji overlays in oven are not working
+shared builders and pizza status areas should swap round
+onconnect problem with room modal showing - disconnect/reconnect issue
+
+socket.on('connect', function() {
+  console.log("Connected to server. Initial connect:", isInitialConnect, "Room:", myRoom);
+  if (isInitialConnect) {
+    // Show modal only on first connection
+    var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+    roomModal.show();
+    socket.emit('request_room_list');
+  } else if (myRoom) {
+    // Silently rejoin the room on reconnect
+    socket.emit('join', { room: myRoom });
+    updateMessage("Reconnected to room " + myRoom);
+    console.log("Rejoining room:", myRoom);
+  }
+});
+
+socket.on('disconnect', function() {
+  console.log("Disconnected from server");
+  updateMessage("Disconnected. Attempting to reconnect...");
+});
+
+socket.on('reconnect', function() {
+  console.log("Reconnected to server");
+  updateMessage("Reconnected to room " + myRoom);
+});
+
+socket.on('connect_error', function(error) {
+  console.error("Connection error:", error);
+  updateMessage("Connection error: " + error.message);
+});
+
+
 ## License
 This project is open-source under the MIT License. Feel free to use, modify, and share!
 
