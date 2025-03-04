@@ -72,7 +72,7 @@ This project is deployed on Render. To deploy your own instance:
      ```
    - Use this start command:
      ```bash
-     gunicorn -k eventlet -w 2 --timeout 120 --log-level debug main:app
+     gunicorn -k eventlet -w 1 --timeout 120 --log-level debug main:app
      ```
 3. **Environment Variables (optional)**:
    - `SECRET_KEY`: Set a secure key (default: "secret!").
