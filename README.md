@@ -36,7 +36,7 @@ This project is deployed on Render. To deploy your own instance:
 4. **Deploy**: Render will build and deploy; access your URL (e.g., `your-app.onrender.com`).  
 > **Note:** Render free tier may spin down after inactivity, causing a delay on first load. Threading is avoided for customer orders to ensure compatibility.
 ## Development
-- **Backend**: Flask with SocketIO for real-time updates; polling for Round 3 orders.  
+- **Backend**: Flask with SocketIO for real-time updates; SpcketIO with polling as backup (during heavy loads) for Round 3 orders.  
 - **Frontend**: HTML/CSS/JavaScript with Bootstrap for UI.
 ### Files:
 - `kanbanpizza/static/` # CSS, JavaScript, and images  
