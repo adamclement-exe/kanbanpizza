@@ -1,5 +1,6 @@
 import eventlet
-eventlet.monkey_patch()
+# Selective monkey-patching to avoid interfering with Gunicorn's pipes
+eventlet.monkey_patch(os=False, select=True, socket=True, time=True)
 
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
@@ -38,7 +39,7 @@ def log_worker():
                 break
             stream_handler.handle(record)
         except Queue.Empty:
-            continue
+            eventlet.sleep(0.01)  # Yield to prevent tight loop
     logger.info("Log worker shutting down")
 
 eventlet.spawn(log_worker)
@@ -121,7 +122,7 @@ def on_disconnect():
 def update_room_list():
     """Broadcast updated room list to all clients."""
     room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
-    socketio.emit('room_list', {"rooms": room_list})  # Removed broadcast=True
+    socketio.emit('room_list', {"rooms": room_list})
 
 @socketio.on('time_request')
 def on_time_request():
@@ -548,6 +549,8 @@ def shutdown_handler(sig, frame):
     logger.info("Received signal %s, initiating shutdown...", sig)
     shutdown_flag = True
     q.put(None)  # Signal log worker to stop
+    # Give greenlets a moment to exit
+    eventlet.sleep(0.1)
     sys.exit(0)
 
 # Register signal handlers at module level for Gunicorn compatibility
@@ -555,7 +558,3 @@ signal.signal(signal.SIGTERM, shutdown_handler)
 signal.signal(signal.SIGINT, shutdown_handler)
 
 logger.info("Kanban Pizza module loaded for Gunicorn")
-
-if __name__ == '__main__':
-    logger.info("Starting Kanban Pizza server...")
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
