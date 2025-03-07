@@ -1,5 +1,4 @@
 import eventlet
-# Selective monkey-patching to avoid interfering with Gunicorn's pipes
 eventlet.monkey_patch(os=False, select=True, socket=True, time=True)
 
 from flask import Flask, render_template, request
