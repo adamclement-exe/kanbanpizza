@@ -1,6 +1,4 @@
-import eventlet
-eventlet.monkey_patch(os=False, select=True, socket=True, time=True)
-
+# app.py
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
 import time
@@ -41,6 +39,7 @@ def log_worker():
             eventlet.sleep(0.01)  # Yield to prevent tight loop
     logger.info("Log worker shutting down")
 
+import eventlet
 eventlet.spawn(log_worker)
 
 app = Flask(__name__)
@@ -548,8 +547,7 @@ def shutdown_handler(sig, frame):
     logger.info("Received signal %s, initiating shutdown...", sig)
     shutdown_flag = True
     q.put(None)  # Signal log worker to stop
-    # Give greenlets a moment to exit
-    eventlet.sleep(0.1)
+    eventlet.sleep(0.1)  # Brief delay for greenlets to exit
     sys.exit(0)
 
 # Register signal handlers at module level for Gunicorn compatibility
