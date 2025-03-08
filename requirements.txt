@@ -2,4 +2,4 @@ Flask~=3.1.0
 Flask-SocketIO~=5.5.1
 redis==5.0.8
 eventlet
-gunicorn
+
