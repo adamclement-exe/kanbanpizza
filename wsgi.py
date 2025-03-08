@@ -1,6 +1,6 @@
 # run.py
 import eventlet
-eventlet.monkey_patch()
+#eventlet.monkey_patch()
 
 from main import app, socketio
 
