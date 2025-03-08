@@ -14,7 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_t
 group_games = {}
 player_group = {}
 MAX_ROOMS = 10
-ROOM_TIMEOUT = 300  # 5 minutes in seconds
+ROOM_TIMEOUT = 1800  
 
 shutdown_flag = False
 
@@ -30,11 +30,11 @@ def new_game_state():
         "max_rounds": 3,
         "current_phase": "waiting",
         "max_pizzas_in_oven": 3,
-        "round_duration": 420,
+        "round_duration": 180,
         "oven_on": False,
         "oven_timer_start": None,
         "round_start_time": None,
-        "debrief_duration": 180,
+        "debrief_duration": 120,
         "customer_orders": [],
         "pending_orders": [],
         "last_updated": time.time()
@@ -404,9 +404,9 @@ def generate_customer_orders(round_duration):
     ]
     orders = []
     max_order_time = round_duration - 45
-    for i in range(50):
+    for i in range(20):
         order = {"id": str(uuid.uuid4())[:8], **random.choice(order_types)}
-        order["arrival_time"] = (i * (max_order_time / 49))
+        order["arrival_time"] = (i * (max_order_time / 19))
         orders.append(order)
     return orders
 
