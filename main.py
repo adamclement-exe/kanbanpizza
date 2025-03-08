@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
 import time
@@ -6,8 +5,10 @@ import uuid
 import random
 import signal
 import sys
-from eventlet.green import Queue
 import eventlet
+
+# Patch standard library for eventlet compatibility
+eventlet.monkey_patch()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -39,7 +40,7 @@ def new_game_state():
         "debrief_duration": 180,
         "customer_orders": [],
         "pending_orders": [],
-        "last_updated": time.time()  # Track last state change
+        "last_updated": time.time()
     }
 
 def check_inactive_rooms():
@@ -53,15 +54,16 @@ def check_inactive_rooms():
         
         for room in rooms_to_remove:
             if room in group_games:
-                # Notify all connected clients in the room
                 for sid in group_games[room]["players"]:
                     if sid in player_group:
                         socketio.emit('room_expired', {"message": "Room inactive for 5+ minutes, please reconnect"}, room=sid)
                         del player_group[sid]
                 del group_games[room]
-                update_room_list()
+                socketio.emit('room_list', {
+                    "rooms": {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
+                })
         
-        eventlet.sleep(60)  # Check every minute
+        eventlet.sleep(60)  # Non-blocking sleep
 
 eventlet.spawn(check_inactive_rooms)
 
@@ -89,7 +91,7 @@ def on_join(data):
     player_group[request.sid] = room
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": []}
-    game_state["last_updated"] = time.time()  # Update timestamp
+    game_state["last_updated"] = time.time()
     join_room(room)
     socketio.emit('game_state', game_state, room=room)
     update_room_list()
@@ -102,7 +104,7 @@ def on_disconnect():
         game_state = group_games.get(room)
         if game_state and sid in game_state["players"]:
             del game_state["players"][sid]
-            game_state["last_updated"] = time.time()  # Update timestamp
+            game_state["last_updated"] = time.time()
         del player_group[sid]
         socketio.emit('game_state', game_state, room=room)
         if game_state and len(game_state["players"]) == 0:
@@ -144,7 +146,7 @@ def on_time_request():
                     "customer_orders": game_state["customer_orders"],
                     "pending_orders": game_state["pending_orders"]
                 }, room=room)
-                game_state["last_updated"] = time.time()  # Update timestamp
+                game_state["last_updated"] = time.time()
                 eventlet.sleep(0)
 
     elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
@@ -177,7 +179,7 @@ def on_prepare_ingredient(data):
     prepared_id = str(uuid.uuid4())[:8]
     prepared_item = {"id": prepared_id, "type": ingredient_type, "prepared_by": room}
     game_state["prepared_ingredients"].append(prepared_item)
-    game_state["last_updated"] = time.time()  # Update timestamp
+    game_state["last_updated"] = time.time()
     socketio.emit('ingredient_prepared', prepared_item, room=room)
     socketio.emit('game_state', game_state, room=room)
 
@@ -196,7 +198,7 @@ def on_take_ingredient(data):
         game_state["prepared_ingredients"].remove(taken)
         if game_state["round"] > 1 and target_sid and target_sid in game_state["players"]:
             game_state["players"][target_sid]["builder_ingredients"].append(taken)
-        game_state["last_updated"] = time.time()  # Update timestamp
+        game_state["last_updated"] = time.time()
         socketio.emit('ingredient_removed', {"ingredient_id": ingredient_id}, room=room)
         socketio.emit('game_state', game_state, room=room)
     else:
@@ -290,7 +292,7 @@ def on_build_pizza(data):
             socketio.emit('pizza_built', pizza, room=room)
         else:
             pizza["status"] = "unmatched"
-            pizza["emoji"] = '<div class="emoji-wrapper"><span class=" Oneshotemoji">🍕</span><span class="emoji">❓</span></div>'
+            pizza["emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">❓</span></div>'
             game_state["wasted_pizzas"].append(pizza)
             socketio.emit('build_error', {"message": "Pizza doesn't match any current order."}, room=request.sid)
 
@@ -298,7 +300,7 @@ def on_build_pizza(data):
         game_state["players"][target_sid]["builder_ingredients"] = []
         socketio.emit('clear_shared_builder', {"player_sid": target_sid}, room=room)
 
-    game_state["last_updated"] = time.time()  # Update timestamp
+    game_state["last_updated"] = time.time()
     socketio.emit('game_state', game_state, room=room)
 
 @socketio.on('move_to_oven')
@@ -320,7 +322,7 @@ def on_move_to_oven(data):
     game_state["built_pizzas"].remove(pizza)
     pizza["oven_start"] = time.time()
     game_state["oven"].append(pizza)
-    game_state["last_updated"] = time.time()  # Update timestamp
+    game_state["last_updated"] = time.time()
     socketio.emit('pizza_moved_to_oven', pizza, room=room)
     socketio.emit('game_state', game_state, room=room)
 
@@ -336,7 +338,7 @@ def toggle_oven(data):
     if desired_state == "on" and not game_state["oven_on"]:
         game_state["oven_on"] = True
         game_state["oven_timer_start"] = time.time()
-        game_state["last_updated"] = time.time()  # Update timestamp
+        game_state["last_updated"] = time.time()
         socketio.emit('oven_toggled', {"state": "on"}, room=room)
     elif desired_state == "off" and game_state["oven_on"]:
         elapsed = time.time() - game_state["oven_timer_start"]
@@ -355,7 +357,7 @@ def toggle_oven(data):
         game_state["oven"] = []
         game_state["oven_on"] = False
         game_state["oven_timer_start"] = None
-        game_state["last_updated"] = time.time()  # Update timestamp
+        game_state["last_updated"] = time.time()
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
     socketio.emit('game_state', game_state, room=room)
 
@@ -388,19 +390,16 @@ def on_start_round(data):
     for sid in game_state["players"]:
         game_state["players"][sid]["builder_ingredients"] = []
 
-    game_state["last_updated"] = time.time()  # Update timestamp
-    try:
-        if game_state["round"] == 3:
-            game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
-        socketio.emit('game_state', game_state, room=room)
-        socketio.emit('round_started', {
-            "round": game_state["round"],
-            "duration": game_state["round_duration"],
-            "customer_orders": game_state["customer_orders"]
-        }, room=room)
-        eventlet.spawn(round_timer, game_state["round_duration"], room)
-    except Exception as e:
-        pass
+    game_state["last_updated"] = time.time()
+    if game_state["round"] == 3:
+        game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
+    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('round_started', {
+        "round": game_state["round"],
+        "duration": game_state["round_duration"],
+        "customer_orders": game_state["customer_orders"]
+    }, room=room)
+    eventlet.spawn(round_timer, game_state["round_duration"], room)
 
 def generate_customer_orders(round_duration):
     order_types = [
@@ -432,55 +431,52 @@ def round_timer(duration, room):
 def end_round(room):
     if shutdown_flag:
         return
-    try:
-        game_state = group_games.get(room)
-        if not game_state or game_state["current_phase"] != "round":
-            return
-        game_state["current_phase"] = "debrief"
-        game_state["debrief_start_time"] = time.time()
-        leftover_ingredients = len(game_state["prepared_ingredients"])
-        unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
-        unsold_count = len(unsold_pizzas)
-        completed_count = len(game_state["completed_pizzas"])
-        wasted_count = len(game_state["wasted_pizzas"])
+    game_state = group_games.get(room)
+    if not game_state or game_state["current_phase"] != "round":
+        return
+    game_state["current_phase"] = "debrief"
+    game_state["debrief_start_time"] = time.time()
+    leftover_ingredients = len(game_state["prepared_ingredients"])
+    unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
+    unsold_count = len(unsold_pizzas)
+    completed_count = len(game_state["completed_pizzas"])
+    wasted_count = len(game_state["wasted_pizzas"])
 
-        if game_state["round"] == 3:
-            fulfilled_orders = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" in pizza)
-            unmatched_pizzas = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
-            remaining_orders = len(game_state["customer_orders"]) + len(game_state["pending_orders"])
-            score = (
-                fulfilled_orders * 20 - unmatched_pizzas * 10 - wasted_count * 10 -
-                unsold_count * 5 - leftover_ingredients - remaining_orders * 15
-            )
-            result = {
-                "completed_pizzas_count": completed_count,
-                "wasted_pizzas_count": wasted_count,
-                "unsold_pizzas_count": unsold_count,
-                "ingredients_left_count": leftover_ingredients,
-                "fulfilled_orders_count": fulfilled_orders,
-                "remaining_orders_count": remaining_orders,
-                "unmatched_pizzas_count": unmatched_pizzas,
-                "score": score
-            }
-        else:
-            score = completed_count * 10 - wasted_count * 10 - unsold_count * 5 - leftover_ingredients
-            result = {
-                "completed_pizzas_count": completed_count,
-                "wasted_pizzas_count": wasted_count,
-                "unsold_pizzas_count": unsold_count,
-                "ingredients_left_count": leftover_ingredients,
-                "score": score
-            }
+    if game_state["round"] == 3:
+        fulfilled_orders = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" in pizza)
+        unmatched_pizzas = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
+        remaining_orders = len(game_state["customer_orders"]) + len(game_state["pending_orders"])
+        score = (
+            fulfilled_orders * 20 - unmatched_pizzas * 10 - wasted_count * 10 -
+            unsold_count * 5 - leftover_ingredients - remaining_orders * 15
+        )
+        result = {
+            "completed_pizzas_count": completed_count,
+            "wasted_pizzas_count": wasted_count,
+            "unsold_pizzas_count": unsold_count,
+            "ingredients_left_count": leftover_ingredients,
+            "fulfilled_orders_count": fulfilled_orders,
+            "remaining_orders_count": remaining_orders,
+            "unmatched_pizzas_count": unmatched_pizzas,
+            "score": score
+        }
+    else:
+        score = completed_count * 10 - wasted_count * 10 - unsold_count * 5 - leftover_ingredients
+        result = {
+            "completed_pizzas_count": completed_count,
+            "wasted_pizzas_count": wasted_count,
+            "unsold_pizzas_count": unsold_count,
+            "ingredients_left_count": leftover_ingredients,
+            "score": score
+        }
 
-        game_state["last_updated"] = time.time()  # Update timestamp
-        socketio.emit('round_ended', result, room=room)
-        if game_state["round"] < game_state["max_rounds"]:
-            game_state["round"] += 1
-            eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
-        else:
-            eventlet.spawn(final_debrief_timer, game_state["debrief_duration"], room)
-    except Exception as e:
-        pass
+    game_state["last_updated"] = time.time()
+    socketio.emit('round_ended', result, room=room)
+    if game_state["round"] < game_state["max_rounds"]:
+        game_state["round"] += 1
+        eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
+    else:
+        eventlet.spawn(final_debrief_timer, game_state["debrief_duration"], room)
 
 def debrief_timer(duration, room):
     start_time = time.time()
@@ -508,7 +504,7 @@ def debrief_timer(duration, room):
         if game_state["round"] == 3:
             game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
 
-        game_state["last_updated"] = time.time()  # Update timestamp
+        game_state["last_updated"] = time.time()
         socketio.emit('game_state', game_state, room=room)
         socketio.emit('round_started', {
             "round": game_state["round"],
@@ -540,16 +536,14 @@ def final_debrief_timer(duration, room):
         game_state["pending_orders"] = []
         for sid in game_state["players"]:
             game_state["players"][sid]["builder_ingredients"] = []
-        game_state["last_updated"] = time.time()  # Update timestamp
+        game_state["last_updated"] = time.time()
         socketio.emit('game_reset', game_state, room=room)
 
-# Signal handler for graceful shutdown with Gunicorn
 def shutdown_handler(sig, frame):
     global shutdown_flag
     shutdown_flag = True
-    eventlet.sleep(0.1)  # Brief delay for greenlets to exit
+    eventlet.sleep(0.1)  # Non-blocking sleep
     sys.exit(0)
 
-# Register signal handlers at module level for Gunicorn compatibility
 signal.signal(signal.SIGTERM, shutdown_handler)
 signal.signal(signal.SIGINT, shutdown_handler)
