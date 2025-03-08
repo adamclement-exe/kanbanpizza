@@ -1,3 +1,4 @@
+import eventlet
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room
 import time
@@ -5,7 +6,6 @@ import uuid
 import random
 import signal
 import sys
-import eventlet
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -44,10 +44,10 @@ def check_inactive_rooms():
     """Check and remove rooms inactive for more than 5 minutes."""
     while not shutdown_flag:
         current_time = time.time()
-        rooms_to_remove = []
-        for room, game_state in list(group_games.items()):
-            if current_time - game_state["last_updated"] >= ROOM_TIMEOUT:
-                rooms_to_remove.append(room)
+        rooms_to_remove = [
+            room for room, game_state in group_games.items()
+            if current_time - game_state["last_updated"] >= ROOM_TIMEOUT
+        ]
         
         for room in rooms_to_remove:
             if room in group_games:
@@ -56,11 +56,9 @@ def check_inactive_rooms():
                         socketio.emit('room_expired', {"message": "Room inactive for 5+ minutes, please reconnect"}, room=sid)
                         del player_group[sid]
                 del group_games[room]
-                socketio.emit('room_list', {
-                    "rooms": {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
-                })
+                update_room_list()
         
-        eventlet.sleep(60)  # Non-blocking sleep
+        eventlet.sleep(60)  # Check every minute
 
 eventlet.spawn(check_inactive_rooms)
 
@@ -97,14 +95,14 @@ def on_join(data):
 def on_disconnect():
     sid = request.sid
     room = player_group.get(sid)
-    if room:
-        game_state = group_games.get(room)
-        if game_state and sid in game_state["players"]:
+    if room and room in group_games:
+        game_state = group_games[room]
+        if sid in game_state["players"]:
             del game_state["players"][sid]
             game_state["last_updated"] = time.time()
         del player_group[sid]
         socketio.emit('game_state', game_state, room=room)
-        if game_state and len(game_state["players"]) == 0:
+        if len(game_state["players"]) == 0:
             del group_games[room]
         update_room_list()
 
@@ -124,16 +122,14 @@ def on_time_request():
         emit('time_response', {"roundTimeRemaining": 0, "ovenTime": 0})
         return
 
+    current_time = time.time()
     roundTimeRemaining = 0
     if game_state["current_phase"] == "round" and game_state["round_start_time"]:
-        elapsed = time.time() - game_state["round_start_time"]
-        left = game_state["round_duration"] - elapsed
-        roundTimeRemaining = max(0, int(left))
+        elapsed = current_time - game_state["round_start_time"]
+        roundTimeRemaining = max(0, int(game_state["round_duration"] - elapsed))
 
         if game_state["round"] == 3 and game_state["pending_orders"]:
-            current_time = elapsed
-            pending_orders = game_state["pending_orders"]
-            orders_to_deliver = [order for order in pending_orders if order["arrival_time"] <= current_time][:10]
+            orders_to_deliver = [order for order in game_state["pending_orders"] if order["arrival_time"] <= elapsed][:10]
             if orders_to_deliver:
                 game_state["customer_orders"].extend(orders_to_deliver)
                 for order in orders_to_deliver:
@@ -143,17 +139,15 @@ def on_time_request():
                     "customer_orders": game_state["customer_orders"],
                     "pending_orders": game_state["pending_orders"]
                 }, room=room)
-                game_state["last_updated"] = time.time()
-                eventlet.sleep(0)
+                game_state["last_updated"] = current_time
 
     elif game_state["current_phase"] == "debrief" and game_state["debrief_start_time"]:
-        elapsed = time.time() - game_state["debrief_start_time"]
-        left = game_state["debrief_duration"] - elapsed
-        roundTimeRemaining = max(0, int(left))
+        elapsed = current_time - game_state["debrief_start_time"]
+        roundTimeRemaining = max(0, int(game_state["debrief_duration"] - elapsed))
 
     ovenTime = 0
     if game_state["oven_on"] and game_state["oven_timer_start"]:
-        ovenTime = int(time.time() - game_state["oven_timer_start"])
+        ovenTime = int(current_time - game_state["oven_timer_start"])
 
     socketio.emit('time_response', {
         "roundTimeRemaining": roundTimeRemaining,
@@ -362,8 +356,7 @@ def toggle_oven(data):
 def on_request_room_list():
     if shutdown_flag:
         return
-    room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
-    emit('room_list', {"rooms": room_list})
+    update_room_list()
 
 @socketio.on('start_round')
 def on_start_round(data):
@@ -419,9 +412,7 @@ def generate_customer_orders(round_duration):
 
 def round_timer(duration, room):
     """Timer that respects shutdown flag."""
-    start_time = time.time()
-    while time.time() - start_time < duration and not shutdown_flag:
-        eventlet.sleep(1)
+    eventlet.sleep(duration)
     if not shutdown_flag:
         end_round(room)
 
@@ -476,9 +467,7 @@ def end_round(room):
         eventlet.spawn(final_debrief_timer, game_state["debrief_duration"], room)
 
 def debrief_timer(duration, room):
-    start_time = time.time()
-    while time.time() - start_time < duration and not shutdown_flag:
-        eventlet.sleep(1)
+    eventlet.sleep(duration)
     if not shutdown_flag:
         game_state = group_games.get(room)
         if not game_state:
@@ -511,9 +500,7 @@ def debrief_timer(duration, room):
         eventlet.spawn(round_timer, game_state["round_duration"], room)
 
 def final_debrief_timer(duration, room):
-    start_time = time.time()
-    while time.time() - start_time < duration and not shutdown_flag:
-        eventlet.sleep(1)
+    eventlet.sleep(duration)
     if not shutdown_flag:
         game_state = group_games.get(room)
         if not game_state:
@@ -539,8 +526,11 @@ def final_debrief_timer(duration, room):
 def shutdown_handler(sig, frame):
     global shutdown_flag
     shutdown_flag = True
-    eventlet.sleep(0.1)  # Non-blocking sleep
-    sys.exit(0)
+    socketio.stop()  # Gracefully stop SocketIO server
+    print("Shutting down gracefully...")
 
 signal.signal(signal.SIGTERM, shutdown_handler)
 signal.signal(signal.SIGINT, shutdown_handler)
+
+if __name__ == "__main__":
+    socketio.run(app, host='0.0.0.0', port=5000)
