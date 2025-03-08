@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch(os=False, select=True, socket=True, time=True)
+eventlet.monkey_patch()
 
 # Import the app after monkey-patching
 from main import app
