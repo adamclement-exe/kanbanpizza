@@ -7,9 +7,6 @@ import signal
 import sys
 import eventlet
 
-# Patch standard library for eventlet compatibility
-eventlet.monkey_patch()
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
