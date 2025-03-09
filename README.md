@@ -49,17 +49,6 @@ The Kanban Pizza Game is an interactive exercise designed to immerse participant
 
 **Agile Manifesto Alignment:** This round reflects the principle of "At regular intervals, the team reflects on how to become more effective, then tunes and adjusts its behavior accordingly," promoting iterative learning and adaptation.
 
-## Round 4: Self-Organization and Adaptation
-
-**Objective:** Allow teams to self-organize, adapt roles, and refine their processes based on previous rounds' learnings.
-
-**Learning Focus:**
-
-- **Empower Self-Organizing Teams:** Teams decide how to allocate roles and responsibilities, fostering autonomy and collective ownership of the process.
-
-- **Evolve Experimentally:** Participants experiment with different strategies, learning from successes and failures to evolve their processes effectively.
-
-**Agile Manifesto Alignment:** This round emphasizes "The best architectures, requirements, and designs emerge from self-organizing teams," highlighting the value of team autonomy in achieving optimal outcomes.
 
 Through these progressive rounds, the Kanban Pizza Game effectively simulates the application of Kanban principles and Agile practices, providing participants with experiential learning that can be translated into real-world process improvements.
 
