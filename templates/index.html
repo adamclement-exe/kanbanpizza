@@ -240,11 +240,11 @@
     .gridcontainer {
       display: grid;
       grid-template-columns: 1.4fr 0.2fr 1.4fr;
-      grid-template-rows: 0.6fr 1.8fr 0.1fr 1.4fr 0.2fr 1.7fr;
+      grid-template-rows: 0.6fr 1.8fr 0.1fr 1.4fr 0.1fr 1.7fr;
       gap: 0px 0px;
       grid-auto-flow: row;
       grid-template-areas:
-        "buttons . ."
+        "buttons . ovenbuttons"
         "ingredients . builders"
         ". . ."
         "built . oven"
@@ -252,6 +252,7 @@
         "completed . wasted";
     }
     .buttons { grid-area: buttons; }
+    .ovenbuttons {grid-area:ovenbuttons;}
     .ingredients { grid-area: ingredients; }
     .builders { grid-area: builders; }
     .oven { grid-area: oven; }
@@ -259,7 +260,7 @@
     .completed { grid-area: completed; }
     .wasted { grid-area: wasted; }
     #room-name-label, #player-count-label {
-      display: block;
+      display: inline;
       font-size: 1rem;
       color: #555;
       margin-top: 5px;
@@ -346,20 +347,12 @@
       <div>
         <h1 class="h3">🍕 Kanban Pizza</h1>
         <div>
-          <span id="room-name-label">Room Name: </span>
-          <span id="player-count-label">Player Count: </span>
+          <h5>Room Name: <span id="room-name-label"></span></h5>
+          <h5>Player Count: <span id="player-count-label"></span></h5>
+           <button id="instructions-btn" class="btn btn-info btn-custom">Instructions</button>
+
         </div>
       </div>
-    </header>
-
-    <nav class="d-flex flex-column mb-3">
-      <div class="d-flex justify-content-between align-items-center w-100">
-        <div>
-          <button id="start-round" class="btn btn-warning btn-custom">Start Round</button>
-          <button id="oven-on" classwhich class="btn btn-success btn-custom">Turn Oven On</button>
-          <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
-          <button id="instructions-btn" class="btn btn-info btn-custom">Instructions</button>
-        </div>
         <div class="d-flex align-items-center">
           <div id="oven-container" class="timer-container oven me-3">
             <span id="oven-timer" class="oven-timer">Oven Time:</span>
@@ -368,6 +361,13 @@
             <span id="timer" class="timer">Round Time:</span>
           </div>
         </div>
+    </header>
+
+    <nav class="d-flex flex-column mb-3">
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <div>
+          <button id="start-round" class="btn btn-warning btn-custom">Start Round</button>
+         </div>
       </div>
       <div id="messages">
         <div class="title">ROOM MESSAGES:</div>
@@ -383,20 +383,26 @@
       <div id="game-area" class="mb-3" style="display: none;">
         <div class="gridcontainer">
           <div class="buttons">
-            <h2>Prepare Ingredients</h2>
+
+            <h3>Prepare Ingredients</h3>
             <div id="prepare-buttons" class="mb-3">
-              <button onclick="prepareIngredient('base')" class="btn btn-outline-primary btn-custom">Make Base</button>
-              <button onclick="prepareIngredient('sauce')" class="btn btn-outline-primary btn-custom">Pour Sauce</button>
-              <button onclick="prepareIngredient('ham')" class="btn btn-outline-primary btn-custom">Chop Ham</button>
-              <button onclick="prepareIngredient('pineapple')" class="btn btn-outline-primary btn-custom">Chop Pineapple</button>
+              <button onclick="prepareIngredient('base')" class="btn btn-outline-primary btn-custom">Base</button>
+              <button onclick="prepareIngredient('sauce')" class="btn btn-outline-primary btn-custom">Sauce</button>
+              <button onclick="prepareIngredient('ham')" class="btn btn-outline-primary btn-custom">Ham</button>
+              <button onclick="prepareIngredient('pineapple')" class="btn btn-outline-primary btn-custom">Pineapple</button>
             </div>
+          </div>
+          <div class="ovenbuttons">
+            <button id="oven-on" classwhich class="btn btn-success btn-custom">Turn Oven On</button>
+            <button id="oven-off" class="btn btn-danger btn-custom">Turn Oven Off</button>
+
           </div>
           <div class="ingredients">
             <h4>Shared Ingredients</h4>
             <div id="prepared-pool" class="d-flex flex-wrap border p-2 mb-3" style="min-height: 100px;border: solid #4A4A4A!important;"></div>
           </div>
           <div class="builders">
-            <h2 id="builder-heading">Your Pizza Builder</h2>
+            <h3 id="builder-heading">Your Pizza Builder</h3>
             <div id="pizza-builder"
                  ondrop="dropToBuilder(event)"
                  ondragover="allowDrop(event)"
@@ -432,16 +438,19 @@
         <span id="forkongithub"><a target="_blank" href="https://github.com/adamclement-exe/kanbanpizza">Fork me on GitHub</a></span>
         <div class="modal-header">
           <div class="col-md-6" style="margin-right:2vw;">
-            <h2 class="modal-title">🍕 Welcome to <br/>Kanban Pizza!</h2>
+            <h1 class="modal-title">🍕 Welcome to <br/>Kanban Pizza!</h1>
+            <button id="instructions-btn0" class="btn btn-info btn-custom">Instructions</button>
           </div>
           <div class="col-md-6">
             <form id="join-form">
               <div class="mb-3">
+                <h3>Join / Create a Room</h3>
                 <label for="room-input" class="form-label">Enter Room Name</label>
                 <input type="text" class="form-control" id="room-input" placeholder="Room name" required>
                 <div id="room-input-feedback" class="invalid-feedback"></div>
               </div>
-              <button type="submit" class="btn btn-primary">Join or Create Room</button>
+
+              <button type="submit" class="btn btn-primary">Enter Room</button>
             </form>
           </div>
         </div>
@@ -478,39 +487,99 @@
         <div class="modal-body">
           <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
           <p><strong>How to Play Round 1:</strong></p>
+          <p>Click the Start Round button to begin.  The round timer will start counting down from 3 minutes, and the game area will be displayed.</p>
+          <img src="/static/1.gif"/>
+          <p></p>
+          <p>Press on the ingredients buttons to create fresh ingredients! They will appear in the Shared Ingredients box.  The ingredients in this box can be used by everyone in the room.</p>
+          <img src="/static/2.gif"/>
+          <p></p>
+          <p>Drag and Drop, (on mobile tap to select, then tap to drop), your ingredients to the Pizza Builder to create a pizza.</p>
+          <img src="/static/3.gif"/>
+          <br/>
+          <img src="/static/4.gif"/>
+          <p>Valid pizzas in round 1 are:</p>
           <ul>
-            <li>Prepare ingredients by clicking the buttons (Base, Sauce, Ham, Pineapple). This ingredients pool is shared by the whole room.</li>
-            <li>Drag and drop ingredients into your Pizza Builder to assemble your pizza.</li>
-            <li>If you are on mobile or tablet, just tap to select an ingredient and then tap the Pizza Builder to "drop" it in that area.</li>
-            <li>In this round you only have access to your own pizza builder area.</li>
-            <li>A valid pizza requires:
-              <ul>
-                <li>1 base</li>
-                <li>1 sauce</li>
-                <li>Either 4 ham (for a bacon pizza) or 2 ham + 2 pineapple (for a pineapple pizza).</li>
-              </ul>
-            </li>
-            <li>Submit your pizza once built. Valid pizzas will display with an emoji overlay:
-              <ul>
-                <li>🍕 + 🥓 for bacon pizzas</li>
-                <li>🍕 + 🍍 for pineapple pizzas</li>
-              </ul>
-            </li>
-            <li>Invalid pizzas show a 🍕 with a 🚫 overlay.</li>
-            <li>Move pizzas to the oven to bake—they will continue to be shown as emoji.</li>
-            <li>After baking, pizzas are evaluated:
-              <ul>
-                <li><strong>Undercooked</strong> (<30 seconds) pizzas get a yellow tint.</li>
-                <li><strong>Burnt</strong> (>45 seconds) pizzas are tinted dark.</li>
-              </ul>
-            </li>
+            <li>Ham Pizza - 1 Base, 1 Sauce, 4 Ham</li>
+            <li>Ham & Pineapple Pizza - 1 Base, 1 Sauce, 2 Ham, 2 Pineapple</li>
           </ul>
+          <p>When you have all the ingredients in the Pizza Builder, press the Submit Pizza button to send the pizza to the Built Pizzas area.</p>
+          <img src="static/5.gif" />
+          <p>The Built Pizza area holds all the room's pizzas - there is no limit to how many pizzas you can store here!</p>
+          <p>Each pizza has a button which will move it to the oven.  The oven has a WiP (Work in Progress) limit of 3, meaning you can only cook 3 pizzas at a time. To cook the pizzas just switch on the oven.  Pizzas need to spend between 30 and 45 seconds in a switched on oven to be properly cooked.</p>
+          <p>Once the oven is switched on, you can not add more pizza without first switching off the oven.  When the oven is switched off all pizzas inside it are removed - if they have been cooked for 30-45 seconds they will be added to the Completed Pizzas box.</p>
+          <p>Pizzas cooked for less than 15 seconds, or more than 45 seconds and pizzas prepared with incorrect ingredients will be moved to the Wasted Pizzas box.</p>
+          <p>Round 1 points:</p>
+          <table border="1" style="border-collapse: collapse; width: 100%;">
+            <caption><strong>Round 1 Scoring</strong></caption>
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th>Component</th>
+                <th>Points</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Completed Pizzas</td>
+                <td>+10</td>
+                <td>Per pizza baked for 30-45 seconds</td>
+              </tr>
+              <tr>
+                <td>Wasted Pizzas</td>
+                <td>-10</td>
+                <td>Per undercooked (< 30s), burnt (> 45s), or invalid pizza</td>
+              </tr>
+              <tr>
+                <td>Uncooked Pizzas</td>
+                <td>-5</td>
+                <td>Per pizza built but not baked or still in oven at end</td>
+              </tr>
+              <tr>
+                <td>Leftover Ingredients</td>
+                <td>-1</td>
+                <td>Per unused prepared ingredient</td>
+              </tr>
+            </tbody>
+          </table>
           <p><strong>How to Play Round 2:</strong></p>
           <ul>
             <li>Drag or tap ingredients from the Shared Ingredients pool to any of the Shared Pizza Builders.</li>
             <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
             <li>Collaboration is key—work together to optimize pizza production!</li>
           </ul>
+          <p>Round 2 points:</p>
+          <table border="1" style="border-collapse: collapse; width: 100%;">
+            <caption><strong>Round 2 Scoring</strong></caption>
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th>Component</th>
+                <th>Points</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Completed Pizzas</td>
+                <td>+10</td>
+                <td>Per pizza baked for 30-45 seconds</td>
+              </tr>
+              <tr>
+                <td>Wasted Pizzas</td>
+                <td>-10</td>
+                <td>Per undercooked (< 30s), burnt (> 45s), or invalid pizza</td>
+              </tr>
+              <tr>
+                <td>Uncooked Pizzas</td>
+                <td>-5</td>
+                <td>Per pizza built but not baked or still in oven at end</td>
+              </tr>
+              <tr>
+                <td>Leftover Ingredients</td>
+                <td>-1</td>
+                <td>Per unused prepared ingredient</td>
+              </tr>
+            </tbody>
+          </table>
           <p><strong>How to Play Round 3:</strong></p>
           <ul>
             <li>Use the Shared Pizza Builders to collaborate, as in Round 2.</li>
@@ -528,6 +597,50 @@
             <li>Build pizzas to match these orders exactly. Unmatched pizzas are wasted.</li>
             <li>Orders arrive over time, with the last one at least 45 seconds before the round ends.</li>
           </ul>
+          <p>Round 3 points:</p>
+          <table border="1" style="border-collapse: collapse; width: 100%;">
+            <caption><strong>Round 3 Scoring</strong></caption>
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th>Component</th>
+                <th>Points</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Fulfilled Orders</td>
+                <td>+20</td>
+                <td>Per cooked pizza matching a customer order</td>
+              </tr>
+              <tr>
+                <td>Unmatched Pizzas</td>
+                <td>-10</td>
+                <td>Per cooked pizza not matching any order</td>
+              </tr>
+              <tr>
+                <td>Wasted Pizzas</td>
+                <td>-10</td>
+                <td>Per undercooked (< 30s), burnt (> 45s), or unmatched build</td>
+              </tr>
+              <tr>
+                <td>Uncooked Pizzas</td>
+                <td>-5</td>
+                <td>Per pizza built but not baked or still in oven at end</td>
+              </tr>
+              <tr>
+                <td>Leftover Ingredients</td>
+                <td>-1</td>
+                <td>Per unused prepared ingredient</td>
+              </tr>
+              <tr>
+                <td>Remaining Orders</td>
+                <td>-15</td>
+                <td>Per unfulfilled customer order at end</td>
+              </tr>
+            </tbody>
+          </table>
+          <hr>
           <p><em>"Individuals and interactions over processes and tools" – as stated in the Agile Manifesto. Collaborate, adapt, and continuously improve your pizza-making process!</em></p>
         </div>
         <div class="modal-footer">
@@ -671,8 +784,8 @@
     }
 
     function updateRoomLabels(room, playerCount) {
-      document.getElementById("room-name-label").innerText = `Room Name: ${room}`;
-      document.getElementById("player-count-label").innerText = `Player Count: ${playerCount}`;
+      document.getElementById("room-name-label").innerText = `${room}`;
+      document.getElementById("player-count-label").innerText = `${playerCount}`;
     }
 
     setInterval(() => {
@@ -711,6 +824,7 @@
     var modalEl = document.getElementById("modal");
     var modal = new bootstrap.Modal(modalEl);
     document.getElementById("instructions-btn").addEventListener("click", () => modal.show());
+    document.getElementById("instructions-btn0").addEventListener("click", () => modal.show());
     document.getElementById("modal-close").addEventListener("click", () => modal.hide());
 
     socket.on('time_response', function(data) {
