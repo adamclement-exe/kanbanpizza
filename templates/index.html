@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=0.1, maximum-scale=0.1, user-scalable=no">
   <title>Kanban Pizza</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Kanban Pizza is an interactive online game to learn Agile and Kanban principles through pizza-making simulation. Join a room, build pizzas, and optimize your workflow!">
@@ -63,13 +63,16 @@
     .minheight {
       min-height: 12vh !important;
     }
+    h1{
+    font-size:4rem;
+    }
     h1, h2, h3, h4, h5 {
       font-family: "Sigmar", serif;
       font-weight: 400;
       font-style: normal;
     }
     .modal-dialog {
-      min-width: 60vw;
+      min-width: 100vw;
     }
     .modal-content {
       position: relative;
@@ -340,6 +343,12 @@
       font-size: 0.875rem;
       margin-top: 0.25rem;
     }
+
+.pizzaman {
+      background:	#e1d800;
+      padding:2vw;
+    }
+
   </style>
 </head>
 <body>
@@ -442,12 +451,12 @@
             <h1 class="modal-title">🍕 Welcome to <br/>Kanban Pizza!</h1>
             <button id="instructions-btn0" class="btn btn-info btn-custom">Instructions</button>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-6 pizzaman">
             <form id="join-form">
               <div class="mb-3">
                 <h3>Join / Create a Room</h3>
                 <label for="room-input" class="form-label">Enter Room Name</label>
-                <input type="text" class="form-control" id="room-input" placeholder="Room name" required>
+                <input type="text" class="form-control" id="room-input" placeholder="Room name" required style="max-width:15vw;">
                 <div id="room-input-feedback" class="invalid-feedback"></div>
               </div>
 
@@ -507,9 +516,10 @@
           <img src="static/5.gif" />
           <p>The Built Pizza area holds all the room's pizzas - there is no limit to how many pizzas you can store here!</p>
           <p>Each pizza has a button which will move it to the oven.  The oven has a WiP (Work in Progress) limit of 3, meaning you can only cook 3 pizzas at a time. To cook the pizzas just switch on the oven.  Pizzas need to spend between 30 and 45 seconds in a switched on oven to be properly cooked.</p>
+          <img src="static/6.gif" />
           <p>Once the oven is switched on, you can not add more pizza without first switching off the oven.  When the oven is switched off all pizzas inside it are removed - if they have been cooked for 30-45 seconds they will be added to the Completed Pizzas box.</p>
           <p>Pizzas cooked for less than 15 seconds, or more than 45 seconds and pizzas prepared with incorrect ingredients will be moved to the Wasted Pizzas box.</p>
-          
+
           <table border="1" style="border-collapse: collapse; width: 100%;">
             <caption><strong>Round 1 Scoring</strong></caption>
             <thead>
@@ -548,7 +558,7 @@
             <li>Any player can add ingredients to any shared builder and submit pizzas from them.</li>
             <li>Collaboration is key—work together to optimize pizza production!</li>
           </ul>
-          
+
           <table border="1" style="border-collapse: collapse; width: 100%;">
             <caption><strong>Round 2 Scoring</strong></caption>
             <thead>
@@ -598,7 +608,7 @@
             <li>Build pizzas to match these orders exactly. Unmatched pizzas are wasted.</li>
             <li>Orders arrive over time, with the last one at least 45 seconds before the round ends.</li>
           </ul>
-          
+
           <table border="1" style="border-collapse: collapse; width: 100%;">
             <caption><strong>Round 3 Scoring</strong></caption>
             <thead>
