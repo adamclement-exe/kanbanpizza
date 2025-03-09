@@ -51,7 +51,6 @@ This project is deployed on Render. To deploy your own instance:
 3. **Submit a pull request**.
 ## Known Issues
 - **Round 3 kanban cards on mobile** need to be wider to accomadate busy pizzas
-- **Emoji overlay alignment** may vary slightly across browsers; tested on Chrome.  
-- **Render may log `[Errno 9] Bad file descriptor`** on shutdown, mitigated with graceful exit handling.  
+- **Emoji overlay alignment** may vary slightly across browsers; tested on Chrome.   
 ## License
 This project is open-source under the MIT License. Feel free to use, modify, and share!
