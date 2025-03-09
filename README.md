@@ -9,7 +9,7 @@ Play it live at: [kanbanpizza.onrender.com](https://kanbanpizza.onrender.com)
 - **Real-Time Gameplay**: SocketIO enables live updates for all players in a room.  
 - **Kanban Cards**: In Round 3, orders appear as cards with ID, ingredients (e.g., 🟡x1 🔴x1 🥓x4), and pizza emoji (e.g., 🍕🥓).  
 - **Scoring**: Points based on completed pizzas, fulfilled orders, and penalties for waste.
-# How Each Round of the Kanban Pizza Game Reinforces Kanban Principles
+# Kanban Principles
 
 The Kanban Pizza Game is an interactive exercise designed to immerse participants in the foundational principles of Kanban and Agile methodologies. Each round introduces specific challenges and learning opportunities that align with key Kanban practices and the principles outlined in the Agile Manifesto.
 
