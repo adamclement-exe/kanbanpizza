@@ -49,6 +49,11 @@
     gtag('config', 'G-YN4X6ZF91C');
   </script>
   <style>
+    .instImg{
+     position: relative;
+     left: 4vw;
+
+    }
     body {
       position: relative;
       background: #f8f9fa;
@@ -72,7 +77,7 @@
       font-style: normal;
     }
     .modal-dialog {
-      min-width: 100vw;
+      min-width: 100%;
     }
     .modal-content {
       position: relative;
@@ -347,6 +352,8 @@
 .pizzaman {
       background:	#e1d800;
       padding:2vw;
+      background: url('static/pizzaman2.png') no-repeat center center;
+      background-size: cover;
     }
 
   </style>
@@ -451,7 +458,7 @@
             <h1 class="modal-title">🍕 Welcome to <br/>Kanban Pizza!</h1>
             <button id="instructions-btn0" class="btn btn-info btn-custom">Instructions</button>
           </div>
-          <div class="col-md-6 pizzaman">
+          <div class="col-md-6 pizzaman" style="max-width:75%">
             <form id="join-form">
               <div class="mb-3">
                 <h3>Join / Create a Room</h3>
@@ -498,25 +505,25 @@
           <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
           <p><strong>How to Play Round 1:</strong></p>
           <p>Click the Start Round button to begin.  The round timer will start counting down from 3 minutes, and the game area will be displayed.</p>
-          <img src="/static/1.gif"/>
+          <img class="instImg" src="/static/1.gif"/>
           <p></p>
           <p>Press on the ingredients buttons to create fresh ingredients! They will appear in the Shared Ingredients box.  The ingredients in this box can be used by everyone in the room.</p>
-          <img src="/static/2.gif"/>
+          <img class="instImg" src="/static/2.gif"/>
           <p></p>
           <p>Drag and Drop, (on mobile tap to select, then tap to drop), your ingredients to the Pizza Builder to create a pizza.</p>
-          <img src="/static/3.gif"/>
+          <img class="instImg" src="/static/3.gif"/>
           <br/>
-          <img src="/static/4.gif"/>
+          <img class="instImg" src="/static/4.gif"/>
           <p>Valid pizzas in round 1 are:</p>
           <ul>
             <li>Ham Pizza - 1 Base, 1 Sauce, 4 Ham</li>
             <li>Ham & Pineapple Pizza - 1 Base, 1 Sauce, 2 Ham, 2 Pineapple</li>
           </ul>
           <p>When you have all the ingredients in the Pizza Builder, press the Submit Pizza button to send the pizza to the Built Pizzas area.</p>
-          <img src="static/5.gif" />
+          <img class="instImg" src="static/5.gif" />
           <p>The Built Pizza area holds all the room's pizzas - there is no limit to how many pizzas you can store here!</p>
           <p>Each pizza has a button which will move it to the oven.  The oven has a WiP (Work in Progress) limit of 3, meaning you can only cook 3 pizzas at a time. To cook the pizzas just switch on the oven.  Pizzas need to spend between 30 and 45 seconds in a switched on oven to be properly cooked.</p>
-          <img src="static/6.gif" />
+          <img class="instImg" src="static/6.gif" />
           <p>Once the oven is switched on, you can not add more pizza without first switching off the oven.  When the oven is switched off all pizzas inside it are removed - if they have been cooked for 30-45 seconds they will be added to the Completed Pizzas box.</p>
           <p>Pizzas cooked for less than 15 seconds, or more than 45 seconds and pizzas prepared with incorrect ingredients will be moved to the Wasted Pizzas box.</p>
 
