@@ -79,10 +79,16 @@
     font-weight: 400;
     font-style: normal;
   }
-  .modal-dialog {
-    max-width: 95%; /* Adjusted for mobile */
+.modal-dialog {
+    max-width: 65%;
     margin: 1rem auto;
-  }
+}
+
+@media (max-width: 768px) { /* Adjust breakpoint as needed */
+    .modal-dialog {
+        max-width: 95%;
+    }
+}
   .modal-content {
     position: relative;
     background: #ffffff;
