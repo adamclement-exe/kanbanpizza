@@ -14,6 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_t
 group_games = {}
 player_group = {}
 MAX_ROOMS = 10
+MAX_PLAYERS = 5
 ROOM_TIMEOUT = 1800
 
 shutdown_flag = False
@@ -77,23 +78,34 @@ def on_connect():
     pass
 
 
-@socketio.on('join')
 def on_join(data):
     if shutdown_flag:
         return
     room = data.get("room", "default")
+    
+    # Check active rooms with at least one player
     active_rooms = {r for r in group_games if len(group_games[r]["players"]) > 0}
+    
+    # If the room does not exist and active room count has reached the maximum, do not create a new room.
     if room not in group_games and len(active_rooms) >= MAX_ROOMS:
-        emit('join_error', {"message": "Maximum room limit (10) reached. Please join an existing room."},
-             room=request.sid)
+        emit('join_error', {"message": "Maximum room limit (10) reached. Please join an existing room."}, room=request.sid)
         return
 
+    # If the room exists, check if the number of players is at maximum capacity.
+    if room in group_games and len(group_games[room]["players"]) >= MAX_PLAYERS:
+        emit('join_error', {"message": "Room is full. Maximum 5 players allowed."}, room=request.sid)
+        return
+
+    # Create the room if it does not exist.
     if room not in group_games:
         group_games[room] = new_game_state()
+    
     game_state = group_games[room]
     player_group[request.sid] = room
+    
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": []}
+    
     game_state["last_updated"] = time.time()
     join_room(room)
     socketio.emit('game_state', game_state, room=room)
