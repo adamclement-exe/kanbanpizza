@@ -6,8 +6,11 @@ import uuid
 import random
 import signal
 import sys
+from flask_compress import Compress
 
 app = Flask(__name__)
+Compress(app)
+
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 
