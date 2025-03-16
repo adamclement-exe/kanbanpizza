@@ -40,7 +40,7 @@ Play it live at: [kanbanpizza.onrender.com](https://kanbanpizza.onrender.com)
 ## Deployment on Render
 This project is deployed on Render. To deploy your own instance:  
 1. **Fork this Repository** to your GitHub account.  
-2. **Create a New Web Service on Render**: Connect your forked repo. Set runtime to Python 3. Use this build command: ```bash pip install -r requirements.txt``` Use this start command: ```bash gunicorn -k eventlet -w 1 --timeout 120 --log-level debug app:app```  
+2. **Create a New Web Service on Render**: Connect your forked repo. Set runtime to Python 3. Use this build command: ```bash pip install -r requirements.txt``` Use this start command: ```python wsgi.py```  
 3. **Environment Variables (optional)**: `SECRET_KEY`: Set a secure key (default: "secret!").  
 4. **Deploy**: Render will build and deploy; access your URL (e.g., `your-app.onrender.com`).  
 > **Note:** Render free tier may spin down after inactivity, causing a delay on first load. Threading is avoided for customer orders to ensure compatibility.
