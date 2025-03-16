@@ -10,7 +10,7 @@ Play it live at: [kanbanpizza.onrender.com](https://kanbanpizza.onrender.com)
 - **Kanban Cards**: In Round 3, orders appear as cards with ID, ingredients (e.g., 🟡x1 🔴x1 🥓x4), and pizza emoji (e.g., 🍕🥓).  
 - **Scoring**: Points based on completed pizzas, fulfilled orders, and penalties for waste.
   
-# Kanban\Agile Principles
+# Kanban/Agile Principles
 
 | Round | Description | Kanban Principles | Agile Principles |
 |-------|-------------|-------------------|------------------|
