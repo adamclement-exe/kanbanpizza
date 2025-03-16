@@ -49,7 +49,8 @@ This project is deployed on Render. To deploy your own instance:
 - **Frontend**: HTML/CSS/JavaScript with Bootstrap for UI.
 ### Files:
 - `kanbanpizza/static/` # CSS, JavaScript, and images  
-- `kanbanpizza/templates/` # HTML templates  
+- `kanbanpizza/templates/` # HTML templates
+- `kanbanpizza/wsgi.py` # Launcher code
 - `kanbanpizza/app.py` # Main server logic  
 - `kanbanpizza/requirements.txt` # Dependencies  
 - `kanbanpizza/README.md` # Project documentation  
