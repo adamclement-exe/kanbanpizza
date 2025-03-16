@@ -1,0 +1,94 @@
+.ingredient {
+  font-size: clamp(1.5rem, 5vw, 2rem); /* Responsive emoji size */
+  margin: 5px;
+  padding: 5px;
+  cursor: pointer;
+  touch-action: manipulation; /* Improve touch response */
+}
+.ingredient.selected {
+  border: 2px solid #007bff;
+  border-radius: 4px;
+}
+.timer-container.oven.oven-active {
+  background: linear-gradient(145deg, #ff6666, #cc0000);
+  box-shadow: 0 0 10px #ff6666;
+}
+.emoji-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 2rem;
+}
+.emoji-wrapper .emoji {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.emoji-wrapper .emoji:not(:first-of-type) {
+  transform: scale(0.6);
+  left: -0.2rem;
+}
+.undercooked .emoji {
+  filter: sepia(1) hue-rotate(10deg) saturate(300%);
+}
+#built-pizzas .emoji, #oven .emoji {
+  filter: sepia(1) hue-rotate(10deg) saturate(300%);
+}
+.burnt .emoji {
+  filter: grayscale(1) brightness(0.3);
+}
+.invalid .emoji, .unmatched .emoji {
+  filter: grayscale(1) contrast(1.2);
+}
+.pizza-builder-container {
+  border: 1px solid #4A4A4A;
+  padding: 10px;
+  margin-bottom: 10px;
+  min-height: 120px;
+}
+.pizza-builder-dropzone {
+  background-color: #D3D3D3;
+  min-height: 80px;
+  border: 1px dashed #4A4A4A;
+  padding: 10px;
+}
+.order-card {
+  background-color: #e9ecef;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 5px;
+  width: clamp(140px, 30vw, 180px);
+  height: clamp(100px, 25vw, 120px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  text-align: center;
+}
+.order-id {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+.order-ingredients {
+  margin: 5px 0;
+  font-size: 1rem;
+}
+.order-emoji {
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+}
+.fork-me-on-github:hover .octo-arm {
+  animation: octocat-wave 560ms ease-in-out;
+}
+@media (max-width: 500px) {
+  .fork-me-on-github:hover .octo-arm {
+    animation: none; /* No animation on hover */
+  }
+  .fork-me-on-github .octo-arm {
+    animation: octocat-wave 560ms ease-in-out; /* Continuous animation */
+  }
+}
+.is-invalid {
+  border-color: #dc3545 !important;
+}
