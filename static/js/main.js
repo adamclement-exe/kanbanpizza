@@ -14,43 +14,33 @@
       }
     }
 
-   async function filterRoomName(event) {
+async function filterRoomName(event) {
   event.preventDefault();
   const roomInput = document.getElementById("room-input");
-  const passwordInput = document.getElementById("password-input");
-  const roomFeedback = document.getElementById("room-input-feedback");
-  const passwordFeedback = document.getElementById("password-input-feedback");
+  const passwordInput = document.getElementById("password-input"); // Add this input in HTML
+  const feedback = document.getElementById("room-input-feedback");
   const roomName = roomInput.value.trim();
   const password = passwordInput.value.trim();
 
-  roomInput.classList.remove("is-invalid");
-  passwordInput.classList.remove("is-invalid");
-  roomFeedback.textContent = "";
-  passwordFeedback.textContent = "";
-
-  if (!roomName) {
+  if (!roomName || !password) {
     roomInput.classList.add("is-invalid");
-    roomFeedback.textContent = "Room name cannot be empty.";
-    return;
-  }
-  if (!password) {
-    passwordInput.classList.add("is-invalid");
-    passwordFeedback.textContent = "Password cannot be empty.";
+    feedback.textContent = "Room name and password cannot be empty.";
     return;
   }
 
   const hasProfanity = await checkProfanity(roomName);
   if (hasProfanity) {
     roomInput.classList.add("is-invalid");
-    roomFeedback.textContent = "Room name contains inappropriate language. Please choose another.";
+    feedback.textContent = "Room name contains inappropriate language.";
     return;
   }
 
+  roomInput.classList.remove("is-invalid");
+  feedback.textContent = "";
   myRoom = roomName;
   localStorage.setItem('myRoom', myRoom);
   socket.emit('join', { room: myRoom, password: password });
 }
-
 
 socket.on('connect', function() {
   if (isInitialConnect) {
@@ -131,37 +121,79 @@ socket.on('connect', function() {
       socket.emit('time_request');
     }, 1000);
 
-    socket.on('room_list', function(data) {
-      var tbody = document.getElementById('room-table-body');
-tbody.innerHTML = '';
+socket.on('room_list', function(data) {
+  var tbody = document.getElementById('room-table-body');
+  tbody.innerHTML = '';
 
-var rooms = Object.keys(data.rooms);
-
-if (rooms.length === 0) {
-  var row = document.createElement('tr');
-  var cell = document.createElement('td');
-  cell.colSpan = 2;  // span across both columns
-  cell.innerText = 'No rooms active';
-  row.appendChild(cell);
-  tbody.appendChild(row);
-} else {
-  rooms.forEach(function(room) {
+  var rooms = Object.keys(data.rooms);
+  if (rooms.length === 0) {
     var row = document.createElement('tr');
-    var nameCell = document.createElement('td');
-    nameCell.innerText = room;
-    var countCell = document.createElement('td');
-    countCell.innerText = data.rooms[room];
-    row.appendChild(nameCell);
-    row.appendChild(countCell);
+    var cell = document.createElement('td');
+    cell.colSpan = 2;
+    cell.innerText = 'No rooms active';
+    row.appendChild(cell);
     tbody.appendChild(row);
-  });
-}
-
-
-
-
+  } else {
+    rooms.forEach(function(room) {
+      var row = document.createElement('tr');
+      var nameCell = document.createElement('td');
+      nameCell.innerText = room;
+      var countCell = document.createElement('td');
+      countCell.innerText = data.rooms[room];
+      row.appendChild(nameCell);
+      row.appendChild(countCell);
+      tbody.appendChild(row);
     });
+  }
 
+  // Display high scores in a table
+  var scoresDiv = document.getElementById('high-scores');
+  scoresDiv.innerHTML = '<h3>Top Scores</h3>';
+
+  // Create table
+  var table = document.createElement('table');
+  table.className = 'table table-bordered';
+
+  // Table header
+  var thead = document.createElement('thead');
+  thead.innerHTML = `
+    <tr>
+      <th>Round</th>
+      <th>1st</th>
+      <th>2nd</th>
+      <th>3rd</th>
+    </tr>
+  `;
+  table.appendChild(thead);
+
+  // Table body
+  var tbody = document.createElement('tbody');
+  for (let round = 1; round <= 3; round++) {
+    var row = document.createElement('tr');
+
+    // Round column
+    var roundCell = document.createElement('td');
+    roundCell.innerText = `Round ${round}`;
+    row.appendChild(roundCell);
+
+    // 1st, 2nd, 3rd columns
+    for (let rank = 1; rank <= 3; rank++) {
+      var rankCell = document.createElement('td');
+      var scoreData = data.high_scores[round][rank];
+      if (scoreData && scoreData.room_name) {
+        rankCell.innerText = `${scoreData.room_name} (${scoreData.score})`;
+      } else {
+        rankCell.innerText = 'No Teams logged yet';
+      }
+      row.appendChild(rankCell);
+    }
+
+    tbody.appendChild(row);
+  }
+  table.appendChild(tbody);
+
+  scoresDiv.appendChild(table);
+});
 socket.on('join_error', function(data) {
   const roomInput = document.getElementById("room-input");
   const passwordInput = document.getElementById("password-input");
