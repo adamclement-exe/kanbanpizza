@@ -24,7 +24,7 @@ MAX_PLAYERS = 5      # Maximum players per room
 
 shutdown_flag = False
 
-def new_game_state():
+def new_game_state(password=None):
     return {
         "players": {},
         "prepared_ingredients": [],
@@ -43,7 +43,8 @@ def new_game_state():
         "debrief_duration": 120,
         "customer_orders": [],
         "pending_orders": [],
-        "last_updated": time.time()
+        "last_updated": time.time(),
+        "password": password  # Add password field
     }
 
 def update_player_activity(sid):
@@ -102,28 +103,34 @@ def on_join(data):
         return
 
     room = data.get("room")
+    password = data.get("password")  # Get password from client
+
     if not room:
         emit('join_error', {"message": "Room name is required."}, room=request.sid)
         return
+    if not password:
+        emit('join_error', {"message": "Password is required."}, room=request.sid)
+        return
 
-    # Check room limit.
+    # Check room limit
     if room not in group_games and len(group_games) >= MAX_ROOMS:
         emit('join_error', {"message": "Maximum room limit (10) reached. Please join an existing room."}, room=request.sid)
         return
 
-    # Check if room is full.
-    if room in group_games and len(group_games[room]["players"]) >= MAX_PLAYERS:
-        emit('join_error', {"message": "Room is full. Maximum 5 players allowed."}, room=request.sid)
-        return
-
-    # Create room if it doesn't exist.
-    if room not in group_games:
-        group_games[room] = new_game_state()
+    # Check if room exists
+    if room in group_games:
+        # Verify password
+        if group_games[room]["password"] != password:
+            emit('join_error', {"message": "Incorrect password."}, room=request.sid)
+            return
+    else:
+        # Create new room with password
+        group_games[room] = new_game_state(password)
 
     game_state = group_games[room]
     player_group[request.sid] = room
 
-    # Add player with a last_activity timestamp.
+    # Add player with a last_activity timestamp
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": [], "last_activity": time.time()}
     else:
@@ -134,6 +141,7 @@ def on_join(data):
     socketio.emit('game_state', game_state, room=room)
     update_room_list()
     print(f"Client {request.sid} joined room {room}")
+
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -292,7 +300,7 @@ def on_build_pizza(data):
             pizza_type = "bacon" if counts["ham"] == 4 else "pineapple"
             pizza["type"] = pizza_type
             pizza["emoji"] = (
-                '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>' 
+                '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🥓</span></div>'
                 if pizza_type == "bacon" else
                 '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🍍</span></div>'
             )
