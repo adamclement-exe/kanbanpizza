@@ -46,6 +46,15 @@ def init_db():
 # Initialize database on startup
 init_db()
 
+@app.route('/download-db')
+def download_db():
+    token = request.args.get('token')
+    if token != "swansea":  # Replace with a secure token
+        return "Unauthorized", 401
+    try:
+        return send_file(DB_FILE, as_attachment=True, download_name="high_scores.db")
+    except FileNotFoundError:
+        return "Database file not found", 404
 
 def new_game_state(password=None):
     return {
