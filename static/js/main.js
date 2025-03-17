@@ -14,46 +14,63 @@
       }
     }
 
-    async function filterRoomName(event) {
-      event.preventDefault();
-      const roomInput = document.getElementById("room-input");
-      const feedback = document.getElementById("room-input-feedback");
-      const roomName = roomInput.value.trim();
+   async function filterRoomName(event) {
+  event.preventDefault();
+  const roomInput = document.getElementById("room-input");
+  const passwordInput = document.getElementById("password-input");
+  const roomFeedback = document.getElementById("room-input-feedback");
+  const passwordFeedback = document.getElementById("password-input-feedback");
+  const roomName = roomInput.value.trim();
+  const password = passwordInput.value.trim();
 
-      if (!roomName) {
-        roomInput.classList.add("is-invalid");
-        feedback.textContent = "Room name cannot be empty.";
-        return;
-      }
+  roomInput.classList.remove("is-invalid");
+  passwordInput.classList.remove("is-invalid");
+  roomFeedback.textContent = "";
+  passwordFeedback.textContent = "";
 
-      const hasProfanity = await checkProfanity(roomName);
-      if (hasProfanity) {
-        roomInput.classList.add("is-invalid");
-        feedback.textContent = "Room name contains inappropriate language. Please choose another.";
-        return;
-      }
+  if (!roomName) {
+    roomInput.classList.add("is-invalid");
+    roomFeedback.textContent = "Room name cannot be empty.";
+    return;
+  }
+  if (!password) {
+    passwordInput.classList.add("is-invalid");
+    passwordFeedback.textContent = "Password cannot be empty.";
+    return;
+  }
 
-      roomInput.classList.remove("is-invalid");
-      feedback.textContent = "";
-      myRoom = roomName;
-      localStorage.setItem('myRoom', myRoom);
-      socket.emit('join', { room: myRoom });
-    }
+  const hasProfanity = await checkProfanity(roomName);
+  if (hasProfanity) {
+    roomInput.classList.add("is-invalid");
+    roomFeedback.textContent = "Room name contains inappropriate language. Please choose another.";
+    return;
+  }
 
-    socket.on('connect', function() {
-      if (isInitialConnect) {
-        var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
-          backdrop: 'static',
-          keyboard: false
-        });
-        roomModal.show();
-        socket.emit('request_room_list');
-        isInitialConnect = false;
-      } else if (myRoom) {
-        socket.emit('join', { room: myRoom });
-        console.log("Reconnecting to room:", myRoom);
-      }
+  myRoom = roomName;
+  localStorage.setItem('myRoom', myRoom);
+  socket.emit('join', { room: myRoom, password: password });
+}
+
+
+socket.on('connect', function() {
+  if (isInitialConnect) {
+    var roomModal = new bootstrap.Modal(document.getElementById('roomModal'), {
+      backdrop: 'static',
+      keyboard: false
     });
+    roomModal.show();
+    socket.emit('request_room_list');
+    isInitialConnect = false;
+  } else if (myRoom) {
+    const password = localStorage.getItem('myRoomPassword') || prompt("Enter the password for room " + myRoom);
+    if (password) {
+      localStorage.setItem('myRoomPassword', password);
+      socket.emit('join', { room: myRoom, password: password });
+      console.log("Reconnecting to room:", myRoom);
+    }
+  }
+});
+
 
     socket.on('disconnect', function() {
       console.log("Disconnected from server");
@@ -145,11 +162,20 @@ if (rooms.length === 0) {
 
     });
 
-    socket.on('join_error', function(data) {
-      const feedback = document.getElementById("room-input-feedback");
-      document.getElementById("room-input").classList.add("is-invalid");
-      feedback.textContent = data.message;
-    });
+socket.on('join_error', function(data) {
+  const roomInput = document.getElementById("room-input");
+  const passwordInput = document.getElementById("password-input");
+  const roomFeedback = document.getElementById("room-input-feedback");
+  const passwordFeedback = document.getElementById("password-input-feedback");
+
+  if (data.message.includes("password")) {
+    passwordInput.classList.add("is-invalid");
+    passwordFeedback.textContent = data.message;
+  } else {
+    roomInput.classList.add("is-invalid");
+    roomFeedback.textContent = data.message;
+  }
+});
 
     socket.on('game_state', function(newState) {
       updateGameState(newState);
