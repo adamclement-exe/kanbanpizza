@@ -4,8 +4,7 @@ from flask_socketio import SocketIO, emit, join_room
 import time
 import uuid
 import random
-import signal
-import sys
+import sqlite3
 from flask_compress import Compress
 
 app = Flask(__name__)
@@ -17,12 +16,36 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_t
 group_games = {}
 player_group = {}
 
-ROOM_TIMEOUT = 1800    # Room inactive timeout (seconds)
-PLAYER_TIMEOUT = 300   # Player inactivity timeout (seconds)
+ROOM_TIMEOUT = 1800  # Room inactive timeout (seconds)
+PLAYER_TIMEOUT = 300  # Player inactivity timeout (seconds)
 MAX_ROOMS = 10
-MAX_PLAYERS = 5      # Maximum players per room
+MAX_PLAYERS = 5  # Maximum players per room
 
 shutdown_flag = False
+
+# SQLite database setup
+DB_FILE = "high_scores.db"
+
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    # Drop the old table if it exists to reset with new schema (for this update)
+    c.execute("DROP TABLE IF EXISTS high_scores")
+    c.execute('''CREATE TABLE IF NOT EXISTS high_scores
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  room_name TEXT NOT NULL,
+                  round_number INTEGER NOT NULL,
+                  score INTEGER NOT NULL,
+                  ranking INTEGER NOT NULL,  -- 1 for 1st, 2 for 2nd, 3 for 3rd
+                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  UNIQUE(round_number, ranking))''')
+    conn.commit()
+    conn.close()
+
+# Initialize database on startup
+init_db()
+
 
 def new_game_state(password=None):
     return {
@@ -44,24 +67,78 @@ def new_game_state(password=None):
         "customer_orders": [],
         "pending_orders": [],
         "last_updated": time.time(),
-        "password": password  # Add password field
+        "password": password  # Add password to game state
     }
 
+
+def save_high_score(room, round_number, score):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    # Fetch current top 3 for this round
+    c.execute("SELECT room_name, score, ranking FROM high_scores WHERE round_number = ? ORDER BY ranking",
+              (round_number,))
+    current_scores = c.fetchall()
+
+    # Convert to a list of [room_name, score, ranking]
+    scores_list = [(row[0], row[1], row[2]) for row in current_scores]
+
+    # Add new score to the list
+    scores_list.append((room, score, 0))  # 0 as temporary ranking
+
+    # Sort by score descending and take top 3
+    scores_list.sort(key=lambda x: x[1], reverse=True)
+    top_three = scores_list[:3]
+
+    # Assign rankings and update database
+    for i, (room_name, score_val, _) in enumerate(top_three, 1):
+        c.execute("""
+            INSERT OR REPLACE INTO high_scores (room_name, round_number, score, ranking, timestamp)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (room_name, round_number, score_val, i))
+
+    conn.commit()
+    conn.close()
+
+
+def get_high_scores():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        SELECT round_number, ranking, room_name, score, timestamp 
+        FROM high_scores 
+        WHERE round_number IN (1, 2, 3) 
+        ORDER BY round_number, ranking
+    """)
+    scores = [
+        {"round_number": row[0], "ranking": row[1], "room_name": row[2], "score": row[3], "timestamp": row[4]}
+        for row in c.fetchall()
+    ]
+    conn.close()
+
+    # Structure as { round: { 1: {...}, 2: {...}, 3: {...} } }
+    result = {1: {}, 2: {}, 3: {}}
+    for score in scores:
+        result[score["round_number"]][score["ranking"]] = {
+            "room_name": score["room_name"],
+            "score": score["score"],
+            "timestamp": score["timestamp"]
+        }
+    return result
+
 def update_player_activity(sid):
-    """Updates the last activity time for a given session (player)."""
     room = player_group.get(sid)
     if room and room in group_games:
         player = group_games[room]["players"].get(sid)
         if player is not None:
             player["last_activity"] = time.time()
 
+
 def check_inactive_rooms():
-    """Periodically removes inactive players and rooms."""
     while not shutdown_flag:
         current_time = time.time()
         rooms_to_remove = []
         for room, game_state in list(group_games.items()):
-            # Check each player in the room for inactivity.
             players_to_remove = []
             for sid, player in list(game_state["players"].items()):
                 if current_time - player.get("last_activity", game_state["last_updated"]) >= PLAYER_TIMEOUT:
@@ -69,10 +146,10 @@ def check_inactive_rooms():
                     players_to_remove.append(sid)
             for sid in players_to_remove:
                 if sid in player_group:
-                    socketio.emit('player_timeout', {"message": "You have been inactive and are removed from the room."}, room=sid)
+                    socketio.emit('player_timeout',
+                                  {"message": "You have been inactive and are removed from the room."}, room=sid)
                     del player_group[sid]
                 del game_state["players"][sid]
-            # Remove room if it hasn’t updated in a long time or if it has no players.
             if current_time - game_state["last_updated"] >= ROOM_TIMEOUT or not game_state["players"]:
                 print(f"Removing inactive room {room}")
                 rooms_to_remove.append(room)
@@ -80,22 +157,28 @@ def check_inactive_rooms():
             if room in group_games:
                 for sid in list(group_games[room]["players"]):
                     if sid in player_group:
-                        socketio.emit('room_expired', {"message": "Room inactive for a long time, please reconnect."}, room=sid)
+                        socketio.emit('room_expired', {"message": "Room inactive for a long time, please reconnect."},
+                                      room=sid)
                         del player_group[sid]
                 del group_games[room]
                 update_room_list()
-        eventlet.sleep(60)  # Check every minute
+        eventlet.sleep(60)
+
 
 eventlet.spawn(check_inactive_rooms)
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 @socketio.on('connect')
 def on_connect():
     print(f"Client connected: {request.sid}")
     update_player_activity(request.sid)
+    update_room_list()
+
 
 @socketio.on('join')
 def on_join(data):
@@ -103,34 +186,29 @@ def on_join(data):
         return
 
     room = data.get("room")
-    password = data.get("password")  # Get password from client
+    password = data.get("password")  # Expect password from client
 
-    if not room:
-        emit('join_error', {"message": "Room name is required."}, room=request.sid)
-        return
-    if not password:
-        emit('join_error', {"message": "Password is required."}, room=request.sid)
+    if not room or not password:
+        emit('join_error', {"message": "Room name and password are required."}, room=request.sid)
         return
 
-    # Check room limit
     if room not in group_games and len(group_games) >= MAX_ROOMS:
-        emit('join_error', {"message": "Maximum room limit (10) reached. Please join an existing room."}, room=request.sid)
+        emit('join_error', {"message": "Maximum room limit (10) reached."}, room=request.sid)
         return
 
-    # Check if room exists
     if room in group_games:
-        # Verify password
         if group_games[room]["password"] != password:
             emit('join_error', {"message": "Incorrect password."}, room=request.sid)
             return
     else:
-        # Create new room with password
         group_games[room] = new_game_state(password)
 
     game_state = group_games[room]
-    player_group[request.sid] = room
+    if len(game_state["players"]) >= MAX_PLAYERS:
+        emit('join_error', {"message": "Room is full. Maximum 5 players allowed."}, room=request.sid)
+        return
 
-    # Add player with a last_activity timestamp
+    player_group[request.sid] = room
     if request.sid not in game_state["players"]:
         game_state["players"][request.sid] = {"builder_ingredients": [], "last_activity": time.time()}
     else:
@@ -160,6 +238,7 @@ def on_disconnect():
             del group_games[room]
         update_room_list()
 
+
 @socketio.on('time_request')
 def on_time_request():
     if shutdown_flag:
@@ -178,7 +257,8 @@ def on_time_request():
         elapsed = current_time - game_state["round_start_time"]
         roundTimeRemaining = max(0, int(game_state["round_duration"] - elapsed))
         if game_state["round"] == 3 and game_state["pending_orders"]:
-            orders_to_deliver = [order for order in game_state["pending_orders"] if order["arrival_time"] <= elapsed][:10]
+            orders_to_deliver = [order for order in game_state["pending_orders"] if order["arrival_time"] <= elapsed][
+                                :10]
             if orders_to_deliver:
                 game_state["customer_orders"].extend(orders_to_deliver)
                 for order in orders_to_deliver:
@@ -203,6 +283,7 @@ def on_time_request():
         "phase": game_state["current_phase"]
     }, room=room)
 
+
 @socketio.on('prepare_ingredient')
 def on_prepare_ingredient(data):
     if shutdown_flag:
@@ -222,6 +303,7 @@ def on_prepare_ingredient(data):
     game_state["last_updated"] = time.time()
     socketio.emit('ingredient_prepared', prepared_item, room=room)
     socketio.emit('game_state', game_state, room=room)
+
 
 @socketio.on('take_ingredient')
 def on_take_ingredient(data):
@@ -244,6 +326,7 @@ def on_take_ingredient(data):
         socketio.emit('game_state', game_state, room=room)
     else:
         emit('error', {"message": "Ingredient not available."}, room=request.sid)
+
 
 @socketio.on('build_pizza')
 def on_build_pizza(data):
@@ -288,12 +371,13 @@ def on_build_pizza(data):
 
     if game_state["round"] < 3:
         valid = counts["base"] == 1 and counts["sauce"] == 1 and (
-            (counts["ham"] == 4 and counts["pineapple"] == 0) or
-            (counts["ham"] == 2 and counts["pineapple"] == 2)
+                (counts["ham"] == 4 and counts["pineapple"] == 0) or
+                (counts["ham"] == 2 and counts["pineapple"] == 2)
         )
         if not valid:
             pizza["status"] = "invalid"
-            pizza["emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🚫</span></div>'
+            pizza[
+                "emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🚫</span></div>'
             game_state["wasted_pizzas"].append(pizza)
             socketio.emit('build_error', {"message": "Invalid combo: Wasted as incomplete."}, room=request.sid)
         else:
@@ -310,9 +394,9 @@ def on_build_pizza(data):
         matched_order = next(
             (order for order in game_state["customer_orders"]
              if order["ingredients"]["base"] == counts["base"] and
-                order["ingredients"]["sauce"] == counts["sauce"] and
-                order["ingredients"]["ham"] == counts["ham"] and
-                order["ingredients"]["pineapple"] == counts["pineapple"]),
+             order["ingredients"]["sauce"] == counts["sauce"] and
+             order["ingredients"]["ham"] == counts["ham"] and
+             order["ingredients"]["pineapple"] == counts["pineapple"]),
             None
         )
         if matched_order:
@@ -334,7 +418,8 @@ def on_build_pizza(data):
             socketio.emit('pizza_built', pizza, room=room)
         else:
             pizza["status"] = "unmatched"
-            pizza["emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">❓</span></div>'
+            pizza[
+                "emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">❓</span></div>'
             game_state["wasted_pizzas"].append(pizza)
             socketio.emit('build_error', {"message": "Pizza doesn't match any current order."}, room=request.sid)
 
@@ -345,6 +430,7 @@ def on_build_pizza(data):
 
     game_state["last_updated"] = time.time()
     socketio.emit('game_state', game_state, room=room)
+
 
 @socketio.on('move_to_oven')
 def on_move_to_oven(data):
@@ -369,6 +455,7 @@ def on_move_to_oven(data):
     game_state["last_updated"] = time.time()
     socketio.emit('pizza_moved_to_oven', pizza, room=room)
     socketio.emit('game_state', game_state, room=room)
+
 
 @socketio.on('toggle_oven')
 def toggle_oven(data):
@@ -406,6 +493,7 @@ def toggle_oven(data):
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
     socketio.emit('game_state', game_state, room=room)
 
+
 @socketio.on('request_room_list')
 def on_request_room_list():
     if shutdown_flag:
@@ -413,9 +501,11 @@ def on_request_room_list():
     update_player_activity(request.sid)
     update_room_list()
 
+
 def update_room_list():
     room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
-    socketio.emit('room_list', {"rooms": room_list})
+    socketio.emit('room_list', {"rooms": room_list, "high_scores": get_high_scores()})
+
 
 @socketio.on('start_round')
 def on_start_round(data):
@@ -450,6 +540,7 @@ def on_start_round(data):
     }, room=room)
     eventlet.spawn(round_timer, game_state["round_duration"], room)
 
+
 def generate_customer_orders(round_duration):
     order_types = [
         {"type": "ham", "ingredients": {"base": 1, "sauce": 1, "ham": 4, "pineapple": 0}},
@@ -469,10 +560,12 @@ def generate_customer_orders(round_duration):
         orders.append(order)
     return orders
 
+
 def round_timer(duration, room):
     eventlet.sleep(duration)
     if not shutdown_flag:
         end_round(room)
+
 
 def end_round(room):
     if shutdown_flag:
@@ -485,9 +578,56 @@ def end_round(room):
     leftover_ingredients = len(game_state["prepared_ingredients"])
     unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
     unsold_count = len(unsold_pizzas)
-    # Further logic to handle end of round can be added here.
+
+    # Calculate score based on your scoring rules
+    completed_count = len(game_state["completed_pizzas"])
+    wasted_count = len(game_state["wasted_pizzas"])
+    if game_state["round"] < 3:
+        score = (completed_count * 10) - (wasted_count * 10) - (unsold_count * 5) - leftover_ingredients
+    else:
+        fulfilled_orders = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" in pizza)
+        unmatched_count = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
+        remaining_orders = len(game_state["customer_orders"])
+        score = (fulfilled_orders * 20) - (unmatched_count * 10) - (wasted_count * 10) - (
+                    unsold_count * 5) - leftover_ingredients - (remaining_orders * 15)
+
+    result = {
+        "completed_pizzas_count": completed_count,
+        "wasted_pizzas_count": wasted_count,
+        "unsold_pizzas_count": unsold_count,
+        "ingredients_left_count": leftover_ingredients,
+        "score": score
+    }
+    if game_state["round"] == 3:
+        result["fulfilled_orders_count"] = fulfilled_orders
+        result["remaining_orders_count"] = remaining_orders
+        result["unmatched_pizzas_count"] = unmatched_count
+
+    save_high_score(room, game_state["round"], score)
     game_state["last_updated"] = time.time()
     socketio.emit('game_state', game_state, room=room)
+    socketio.emit('round_ended', result, room=room)
+    eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
+
+
+def debrief_timer(duration, room):
+    eventlet.sleep(duration)
+    if not shutdown_flag:
+        reset_round(room)
+
+
+def reset_round(room):
+    game_state = group_games.get(room)
+    if not game_state or game_state["current_phase"] != "debrief":
+        return
+    game_state["current_phase"] = "waiting"
+    game_state["round"] += 1
+    if game_state["round"] > game_state["max_rounds"]:
+        game_state["round"] = 1  # Reset to Round 1 after Round 3
+    game_state["debrief_start_time"] = None
+    game_state["last_updated"] = time.time()
+    socketio.emit('game_reset', game_state, room=room)
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
