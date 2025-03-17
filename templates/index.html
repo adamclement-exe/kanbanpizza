@@ -28,13 +28,13 @@
 
 
   <!-- Preloading assets -->
-	<link rel="preload" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Sigmar&display=swap" as="style" onload="this.rel='stylesheet'">	
+	<link rel="preload" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Sigmar&display=swap" as="style" onload="this.rel='stylesheet'">
 	<link rel="preload" href="/static/pizzaman.svg" as="image">
 	<link rel="preload" href="/static/pizzaman2.svg" as="image">
 	<link rel="preload" href="/static/favicon-32x32.png" as="image">
 	<link rel="preload" href="/static/tile10.svg" as="image">
 
-	
+
   <!-- Favicon and Apple Touch Icons -->
   <link rel="apple-touch-icon" sizes="180x180" href="static/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="static/favicon-32x32.png">
@@ -201,15 +201,18 @@
           </div>
           <div class="col-md-6 pizzaman" >
 
-            <form id="join-form">
-              <div class="mb-3">
-                <h3>Join / Create a Room</h3>
-                <label for="room-input" class="form-label">Enter Room Name</label>
-                <input type="text" class="form-control" id="room-input" placeholder="Room name" required>
-                <div id="room-input-feedback" class="invalid-feedback"></div>
-              </div>
-              <button type="submit" class="btn btn-primary">Enter Room</button>
-            </form>
+        <form id="join-form">
+          <div class="mb-3">
+            <h3>Join / Create a Room</h3>
+            <label for="room-input" class="form-label">Enter Room Name</label>
+            <input type="text" class="form-control" id="room-input" placeholder="Room name" required>
+            <div id="room-input-feedback" class="invalid-feedback"></div>
+            <label for="password-input" class="form-label">Enter Room Password</label>
+            <input type="password" class="form-control" id="password-input" placeholder="Password" required>
+            <div id="password-input-feedback" class="invalid-feedback"></div>
+          </div>
+          <button type="submit" class="btn btn-primary">Enter Room</button>
+        </form>
 
           </div>
         </div>
@@ -256,9 +259,9 @@
         </div>
         <div class="modal-body">
           <p><strong>Objective:</strong> Build and bake pizzas to score points.</p>
-	  <p>First gather yourself into a group of 3-5 people.  Then each of you should enter the same room name and click the 'Enter Room' button.</p>
-	  <p>The 'Start Round' button will begin the game for everyone in the room, so make sure everyone is ready before you press it!</p>
-		
+	      <p>First gather yourself into a group of 3-5 people. Each of you should enter the same room name and a shared password, then click the 'Enter Room' button. If you're creating a new room, set a password; if joining an existing room, use the password provided by the room creator.</p>
+          <p>The 'Start Round' button will begin the game for everyone in the room, so make sure everyone is ready before you press it!</p>
+
           <p><strong>How to Play Round 1:</strong></p>
           <p>Click the Start Round button to begin.  The round timer will start counting down from 3 minutes, and the game area will be displayed.</p>
           <img loading="lazy" class="instImg" src="/static/1.gif"/>
@@ -315,7 +318,7 @@
               </tr>
             </tbody>
           </table>
-	  <p>At the end of each round a 'Debrief' timer will start counting down from 3 minutes.  Use his time to discuss what went well and how your workflow could be improved.  You should also discuss how you will change strategy once you have access to the 'Shared Pizza Builders' in round 2!</p>	
+	  <p>At the end of each round a 'Debrief' timer will start counting down from 3 minutes.  Use his time to discuss what went well and how your workflow could be improved.  You should also discuss how you will change strategy once you have access to the 'Shared Pizza Builders' in round 2!</p>
           <p><strong>How to Play Round 2:</strong></p>
           <ul>
             <li>Drag or tap ingredients from the Shared Ingredients pool to any of the Shared Pizza Builders.</li>
