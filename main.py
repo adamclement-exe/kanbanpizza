@@ -640,8 +640,16 @@ def reset_round(room):
 
 # List of known search engine User-Agent substrings
 SEARCH_ENGINE_AGENTS = [
-    "Googlebot", "Bingbot", "Slurp", "DuckDuckBot", "Baiduspider", 
-    "YandexBot", "Sogou", "Exabot", "facebot", "ia_archiver"
+    # Google
+    "Googlebot", "Googlebot-Image", "Googlebot-News", "Googlebot-Video", 
+    "Mediapartners-Google", "AdsBot-Google", "Google-InspectionTool",
+
+    # Bing
+    "Bingbot", "BingPreview", "MSNBot",
+
+    # Other search engines
+    "Slurp", "DuckDuckBot", "Baiduspider", "YandexBot", 
+    "Sogou", "Exabot", "facebot", "ia_archiver"
 ]
 
 @app.route('/search-engine-info')
