@@ -32,7 +32,7 @@ Play it live at: [kanbanpizza.onrender.com](https://kanbanpizza.onrender.com)
 4. **Run the Application**: ```bash python app.py```
 5. **Open your browser** to `http://localhost:5000`.
 ## How to Play
-1. **Join a Room**: Enter a room name (or use "default") on the welcome screen.  
+1. **Join a Room**: Enter a room name and password on the welcome screen.  
 2. **Round 1**: Prepare ingredients (base, sauce, ham, pineapple) individually. Build and bake pizzas meeting specific criteria (1 base, 1 sauce, 4 ham or 2 ham + 2 pineapple).  
 3. **Round 2**: Collaborate using shared builders to optimize production.  
 4. **Round 3**: Fulfill 50 customer orders shown as Kanban cards (e.g., "Order: abc123", "🟡x1 🔴x1 🥓x4", "🍕🥓"). Match ingredients exactly to avoid waste.  
