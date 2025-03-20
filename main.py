@@ -638,5 +638,71 @@ def reset_round(room):
     socketio.emit('game_reset', game_state, room=room)
 
 
+# List of known search engine User-Agent substrings
+SEARCH_ENGINE_AGENTS = [
+    "Googlebot", "Bingbot", "Slurp", "DuckDuckBot", "Baiduspider", 
+    "YandexBot", "Sogou", "Exabot", "facebot", "ia_archiver"
+]
+
+@app.route('/search-engine-info')
+def search_engine_info():
+    # Get the User-Agent header from the request
+    user_agent = request.headers.get('User-Agent', '')
+
+    # Check if the User-Agent matches any known search engine bots
+    is_search_engine = any(agent in user_agent for agent in SEARCH_ENGINE_AGENTS)
+
+    if not is_search_engine:
+        # Return a 403 Forbidden response for non-search-engine users
+        return "Access Denied: This page is for search engines only.", 403
+
+    # Instructions and metadata for search engines
+    info = {
+        "title": "Kanban Pizza - Game Instructions and Information",
+        "description": "Kanban Pizza is an interactive online game to learn Agile and Kanban principles through a pizza-making simulation.",
+        "instructions": """
+            <h2>How to Play Kanban Pizza</h2>
+            <p><strong>Objective:</strong> Build and bake pizzas to score points across three rounds.</p>
+            <h3>Getting Started</h3>
+            <p>Gather 3-5 players, enter a room name and shared password, then click 'Enter Room'. Start the game with the 'Start Round' button.</p>
+            <h3>Round 1: Basic Pizza Making</h3>
+            <p>- Prepare ingredients (Base, Sauce, Ham, Pineapple) and drag them to your Pizza Builder.<br>
+            - Valid pizzas: Ham (1 Base, 1 Sauce, 4 Ham) or Ham & Pineapple (1 Base, 1 Sauce, 2 Ham, 2 Pineapple).<br>
+            - Submit pizzas, move them to the oven (max 3 at a time), and bake for 30-45 seconds.<br>
+            - Scoring: +10 per completed pizza, -10 per wasted, -5 per unsold, -1 per leftover ingredient.</p>
+            <h3>Round 2: Collaboration</h3>
+            <p>- Use Shared Pizza Builders to collaborate.<br>
+            - Same pizza rules and scoring as Round 1.</p>
+            <h3>Round 3: Customer Orders</h3>
+            <p>- Match 20 customer orders (e.g., Plain: 1 Base, 1 Sauce; Heavy Ham: 1 Base, 1 Sauce, 6 Ham).<br>
+            - Scoring: +20 per fulfilled order, -10 per unmatched/wasted, -5 per unsold, -1 per leftover, -15 per unfulfilled order.</p>
+            <p><em>Learn Agile principles like collaboration and continuous improvement!</em></p>
+        """,
+        "keywords": "Kanban, Agile, pizza game, workflow simulation, team collaboration, online game",
+        "author": "Adam Clement 2025",
+        "url": "https://kanbanpizza.onrender.com/"
+    }
+
+    # Render as simple HTML for crawlers
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="description" content="{info['description']}">
+        <meta name="keywords" content="{info['keywords']}">
+        <meta name="author" content="{info['author']}">
+        <meta name="robots" content="index, nofollow">
+        <title>{info['title']}</title>
+    </head>
+    <body>
+        <h1>{info['title']}</h1>
+        {info['instructions']}
+        <p>For more, visit: <a href="{info['url']}">{info['url']}</a></p>
+    </body>
+    </html>
+    """
+    return html_content
+
 if __name__ == '__main__':
     socketio.run(app, debug=True)
