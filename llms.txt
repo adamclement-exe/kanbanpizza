@@ -1,0 +1,83 @@
+# LLMs.txt for Kanban Pizza
+
+# Site Information
+name: Kanban Pizza
+description: Kanban Pizza is a collaborative, multiplayer game that simulates a pizza-making workflow using Kanban principles. Built with Flask and SocketIO, it runs as a web application where players work together to prepare ingredients, build pizzas, and fulfill customer orders across three rounds of increasing complexity.
+website: https://kanbanpizza.onrender.com
+repository: https://github.com/adamclement-exe/kanbanpizza
+
+# Features
+features:
+  - Three Rounds of Pizza Production:
+    - Round 1: Individual pizza building with simple rules (e.g., 1 base, 1 sauce, 4 ham or 2 ham + 2 pineapple).
+    - Round 2: Collaborative building using shared pizza builders.
+    - Round 3: Match 50 customer orders with varied ingredient combos, displayed as Kanban cards.
+  - Real-Time Gameplay: Live updates via SocketIO for all players in a room.
+  - Kanban Cards: Orders appear with ID, ingredients (e.g., 🟡x1 🔴x1 🥓x4), and pizza emoji (e.g., 🍕🥓).
+  - Scoring System: Points based on completed pizzas, fulfilled orders, and penalties for waste.
+
+# Kanban & Agile Principles
+kanban_agile_principles:
+  - Round 1: Workflow Visualization and WIP Limits
+    - Kanban: Visualize workflow, Limit Work in Progress (WIP).
+    - Agile: Simplicity—the art of maximizing the amount of work not done; Continuous attention to technical excellence.
+  - Round 2: Enhanced Collaboration
+    - Kanban: Manage flow, Make process policies explicit.
+    - Agile: Individuals and interactions over processes and tools; Business people and developers must work together daily throughout the project.
+  - Round 3: Customer Orders and Flow Management
+    - Kanban: Implement feedback loops, Improve collaboratively and experimentally.
+    - Agile: Responding to change over following a plan; At regular intervals, the team reflects on how to become more effective.
+
+# Prerequisites
+prerequisites:
+  - Python 3.8+
+  - Git
+  - A web browser (Chrome, Firefox, etc.)
+
+# Setup Instructions
+setup:
+  - Clone Repository: `git clone https://github.com/adamclement-exe/kanbanpizza.git && cd kanbanpizza`
+  - Create Virtual Environment:
+    - Unix/Linux/Mac: `source venv/bin/activate`
+    - Windows: `venv\Scripts\activate`
+  - Install Dependencies: `pip install -r requirements.txt`
+  - Run Application: `python app.py`
+  - Open Browser: `http://localhost:5000`
+
+# Deployment on Render
+deployment:
+  - Fork Repository: `https://github.com/adamclement-exe/kanbanpizza`
+  - Create Web Service on Render:
+    - Connect repo and set Python 3 runtime.
+    - Build command: `pip install -r requirements.txt`
+    - Start command: `python wsgi.py`
+  - Environment Variables (Optional): `SECRET_KEY="your_secure_key"`
+  - Access your instance at: `your-app.onrender.com`
+  - Note: Free-tier services may spin down after inactivity, causing a delay on first load.
+
+# Development
+development:
+  - Backend: Flask with SocketIO for real-time updates.
+  - Frontend: HTML, CSS, JavaScript, Bootstrap.
+  - Directory Structure:
+    - `kanbanpizza/static/` → CSS, JavaScript, and images.
+    - `kanbanpizza/templates/` → HTML templates.
+    - `kanbanpizza/wsgi.py` → Launcher code.
+    - `kanbanpizza/app.py` → Main server logic.
+    - `kanbanpizza/requirements.txt` → Dependencies.
+    - `kanbanpizza/README.md` → Project documentation.
+    - `kanbanpizza/LICENSE` → License details.
+
+# How to Contribute
+contribute:
+  - Fork and clone the repo.
+  - Make changes and test locally.
+  - Submit a pull request.
+
+# Known Issues
+known_issues:
+  - Round 3 Kanban cards on mobile need to be wider to accommodate busy pizzas.
+  - Emoji overlay alignment may vary across browsers (tested on Chrome).
+
+# License
+license: MIT License - This project is open-source. Feel free to use, modify, and share!
