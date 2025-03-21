@@ -31,7 +31,7 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     # Drop the old table if it exists to reset with new schema (for this update)
-    c.execute("DROP TABLE IF EXISTS high_scores")
+    #c.execute("DROP TABLE IF EXISTS high_scores")
     c.execute('''CREATE TABLE IF NOT EXISTS high_scores
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   room_name TEXT NOT NULL,
