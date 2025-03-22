@@ -243,13 +243,13 @@ def on_time_request():
     if not game_state:
         emit('time_response', {"roundTimeRemaining": 0, "ovenTime": 0})
         return
-current_time = time.time()
-roundTimeRemaining = 0
-
-if game_state["current_phase"] == "round" and game_state["round_start_time"]:
-    elapsed = current_time - game_state["round_start_time"]
-    roundTimeRemaining = max(0, int(game_state["round_duration"] - elapsed))
-    # Existing logic for processing pending orders in round 3
+    current_time = time.time()
+    roundTimeRemaining = 0
+    
+    if game_state["current_phase"] == "round" and game_state["round_start_time"]:
+        elapsed = current_time - game_state["round_start_time"]
+        roundTimeRemaining = max(0, int(game_state["round_duration"] - elapsed))
+        # Existing logic for processing pending orders in round 3
     if game_state["round"] == 3 and game_state["pending_orders"]:
         orders_to_deliver = [order for order in game_state["pending_orders"] if order["arrival_time"] <= elapsed][:10]
         if orders_to_deliver:
@@ -267,24 +267,24 @@ if game_state["current_phase"] == "round" and game_state["round_start_time"]:
         game_state["current_phase"] = "debrief"
         game_state["debrief_start_time"] = current_time
         socketio.emit('game_state', game_state, room=room)
-
-elif game_state["current_phase"] == "debrief" and game_state.get("debrief_start_time"):
+    
+    elif game_state["current_phase"] == "debrief" and game_state.get("debrief_start_time"):
     elapsed = current_time - game_state["debrief_start_time"]
     roundTimeRemaining = max(0, int(game_state["debrief_duration"] - elapsed))
     # When debrief timer runs out, transition to waiting (or new round setup)
     if roundTimeRemaining == 0:
         game_state["current_phase"] = "waiting"
         socketio.emit('game_state', game_state, room=room)
-
-ovenTime = 0
-if game_state["oven_on"] and game_state["oven_timer_start"]:
+    
+    ovenTime = 0
+    if game_state["oven_on"] and game_state["oven_timer_start"]:
     ovenTime = int(current_time - game_state["oven_timer_start"])
-
-socketio.emit('time_response', {
+    
+    socketio.emit('time_response', {
     "roundTimeRemaining": roundTimeRemaining,
     "ovenTime": ovenTime,
     "phase": game_state["current_phase"]
-}, room=room)
+    }, room=room)
 
 
 @socketio.on('prepare_ingredient')
