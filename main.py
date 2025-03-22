@@ -269,8 +269,8 @@ def on_time_request():
         socketio.emit('game_state', game_state, room=room)
     
     elif game_state["current_phase"] == "debrief" and game_state.get("debrief_start_time"):
-    elapsed = current_time - game_state["debrief_start_time"]
-    roundTimeRemaining = max(0, int(game_state["debrief_duration"] - elapsed))
+        elapsed = current_time - game_state["debrief_start_time"]
+        roundTimeRemaining = max(0, int(game_state["debrief_duration"] - elapsed))
     # When debrief timer runs out, transition to waiting (or new round setup)
     if roundTimeRemaining == 0:
         game_state["current_phase"] = "waiting"
