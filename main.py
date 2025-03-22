@@ -231,8 +231,18 @@ def on_disconnect():
         if len(game_state["players"]) == 0:
             del group_games[room]
         update_room_list()
-
-
+        
+@socketio.on('time_request')
+def on_time_request():
+    if shutdown_flag:
+        return
+    update_player_activity(request.sid)
+    sid = request.sid
+    room = player_group.get(sid, "default")
+    game_state = group_games.get(room)
+    if not game_state:
+        emit('time_response', {"roundTimeRemaining": 0, "ovenTime": 0})
+        return
 current_time = time.time()
 roundTimeRemaining = 0
 
