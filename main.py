@@ -1,99 +1,60 @@
-import os
 import eventlet
 from flask import Flask, render_template, request, send_file
 from flask_socketio import SocketIO, emit, join_room
-from flask_sqlalchemy import SQLAlchemy
-from flask_compress import Compress
 import time
 import uuid
 import random
+import sqlite3
+from flask_compress import Compress
 
-
-# Flask and extensions setup
 app = Flask(__name__)
 Compress(app)
 
 app.config['SECRET_KEY'] = 'secret!'
-
-# Dynamic database configuration: PostgreSQL if 'dbpass' is set, otherwise SQLite
-db_password = os.environ.get("dbpass")
-if db_password:
-    app.config['SQLALCHEMY_DATABASE_URI'] = (
-        f'postgresql://pizzadb_qsvh_user:{db_password}@dpg-cvfjm3nnoe9s73bi9950-a/pizzadb_qsvh'
-    )
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///high_scores.db'
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
-db = SQLAlchemy(app)
-
-# PostgreSQL/SQLite model
-class HighScore(db.Model):
-    __tablename__ = 'high_scores'
-    id = db.Column(db.Integer, primary_key=True)
-    room_name = db.Column(db.String, nullable=False)
-    round_number = db.Column(db.Integer, nullable=False)
-    score = db.Column(db.Integer, nullable=False)
-    ranking = db.Column(db.Integer, nullable=False)
-    timestamp = db.Column(db.DateTime, default=db.func.now())
-
-    __table_args__ = (
-        db.UniqueConstraint('round_number', 'ranking', name='_round_ranking_uc'),
-    )
-
-with app.app_context():
-    db.create_all()
-
-
-@app.route('/download-db')
-def download_db():
-    if not db_password:
-        return send_file("high_scores.db", as_attachment=True, download_name="high_scores.db")
-    return "Database download not supported in PostgreSQL environment.", 403
 
 group_games = {}
 player_group = {}
 
-ROOM_TIMEOUT = 1800
-PLAYER_TIMEOUT = 300
+ROOM_TIMEOUT = 1800  # Room inactive timeout (seconds)
+PLAYER_TIMEOUT = 300  # Player inactivity timeout (seconds)
 MAX_ROOMS = 10
-MAX_PLAYERS = 5
+MAX_PLAYERS = 5  # Maximum players per room
+
 shutdown_flag = False
 
-def save_high_score(room, round_number, score):
-    current_scores = HighScore.query.filter_by(round_number=round_number).order_by(HighScore.ranking).all()
-    scores_list = [(hs.room_name, hs.score, hs.ranking) for hs in current_scores]
-    scores_list.append((room, score, 0))
-    scores_list.sort(key=lambda x: x[1], reverse=True)
-    top_three = scores_list[:3]
-
-    HighScore.query.filter_by(round_number=round_number).delete()
-    for rank, (room_name, score_val, _) in enumerate(top_three, 1):
-        new_score = HighScore(room_name=room_name, round_number=round_number, score=score_val, ranking=rank)
-        db.session.add(new_score)
-    db.session.commit()
-
-def get_high_scores():
-    scores = HighScore.query.filter(HighScore.round_number.in_([1, 2, 3])).order_by(
-        HighScore.round_number, HighScore.ranking
-    ).all()
-
-    result = {1: {}, 2: {}, 3: {}}
-    for score in scores:
-        result[score.round_number][score.ranking] = {
-            "room_name": score.room_name,
-            "score": score.score,
-            "timestamp": score.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        }
-    return result
-
-def update_room_list():
-    room_list = {r: len(group_games[r]["players"]) for r in group_games if len(group_games[r]["players"]) > 0}
-    socketio.emit('room_list', {"rooms": room_list, "high_scores": get_high_scores()})
+# SQLite database setup
+DB_FILE = "high_scores.db"
 
 
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    # Drop the old table if it exists to reset with new schema (for this update)
+    #c.execute("DROP TABLE IF EXISTS high_scores")
+    c.execute('''CREATE TABLE IF NOT EXISTS high_scores
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  room_name TEXT NOT NULL,
+                  round_number INTEGER NOT NULL,
+                  score INTEGER NOT NULL,
+                  ranking INTEGER NOT NULL,  -- 1 for 1st, 2 for 2nd, 3 for 3rd
+                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  UNIQUE(round_number, ranking))''')
+    conn.commit()
+    conn.close()
+
+# Initialize database on startup
+init_db()
+
+@app.route('/download-db')
+def download_db():
+    token = request.args.get('token')
+    if token != "swansea":  # Replace with a secure token
+        return "Unauthorized", 401
+    try:
+        return send_file(DB_FILE, as_attachment=True, download_name="high_scores.db")
+    except FileNotFoundError:
+        return "Database file not found", 404
 
 def new_game_state(password=None):
     return {
@@ -119,6 +80,60 @@ def new_game_state(password=None):
     }
 
 
+def save_high_score(room, round_number, score):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    # Fetch current top 3 for this round
+    c.execute("SELECT room_name, score, ranking FROM high_scores WHERE round_number = ? ORDER BY ranking",
+              (round_number,))
+    current_scores = c.fetchall()
+
+    # Convert to a list of [room_name, score, ranking]
+    scores_list = [(row[0], row[1], row[2]) for row in current_scores]
+
+    # Add new score to the list
+    scores_list.append((room, score, 0))  # 0 as temporary ranking
+
+    # Sort by score descending and take top 3
+    scores_list.sort(key=lambda x: x[1], reverse=True)
+    top_three = scores_list[:3]
+
+    # Assign rankings and update database
+    for i, (room_name, score_val, _) in enumerate(top_three, 1):
+        c.execute("""
+            INSERT OR REPLACE INTO high_scores (room_name, round_number, score, ranking, timestamp)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (room_name, round_number, score_val, i))
+
+    conn.commit()
+    conn.close()
+
+
+def get_high_scores():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        SELECT round_number, ranking, room_name, score, timestamp 
+        FROM high_scores 
+        WHERE round_number IN (1, 2, 3) 
+        ORDER BY round_number, ranking
+    """)
+    scores = [
+        {"round_number": row[0], "ranking": row[1], "room_name": row[2], "score": row[3], "timestamp": row[4]}
+        for row in c.fetchall()
+    ]
+    conn.close()
+
+    # Structure as { round: { 1: {...}, 2: {...}, 3: {...} } }
+    result = {1: {}, 2: {}, 3: {}}
+    for score in scores:
+        result[score["round_number"]][score["ranking"]] = {
+            "room_name": score["room_name"],
+            "score": score["score"],
+            "timestamp": score["timestamp"]
+        }
+    return result
 
 def update_player_activity(sid):
     room = player_group.get(sid)
@@ -231,7 +246,8 @@ def on_disconnect():
         if len(game_state["players"]) == 0:
             del group_games[room]
         update_room_list()
-        
+
+
 @socketio.on('time_request')
 def on_time_request():
     if shutdown_flag:
@@ -243,47 +259,37 @@ def on_time_request():
     if not game_state:
         emit('time_response', {"roundTimeRemaining": 0, "ovenTime": 0})
         return
+
     current_time = time.time()
     roundTimeRemaining = 0
-    
     if game_state["current_phase"] == "round" and game_state["round_start_time"]:
         elapsed = current_time - game_state["round_start_time"]
         roundTimeRemaining = max(0, int(game_state["round_duration"] - elapsed))
-        # Existing logic for processing pending orders in round 3
-    if game_state["round"] == 3 and game_state["pending_orders"]:
-        orders_to_deliver = [order for order in game_state["pending_orders"] if order["arrival_time"] <= elapsed][:10]
-        if orders_to_deliver:
-            game_state["customer_orders"].extend(orders_to_deliver)
-            for order in orders_to_deliver:
-                game_state["pending_orders"].remove(order)
-                socketio.emit('new_order', order, room=room)
-            socketio.emit('game_state_update', {
-                "customer_orders": game_state["customer_orders"],
-                "pending_orders": game_state["pending_orders"]
-            }, room=room)
-            game_state["last_updated"] = current_time
-    # When timer runs out, transition from round to debrief
-    if roundTimeRemaining == 0:
-        game_state["current_phase"] = "debrief"
-        game_state["debrief_start_time"] = current_time
-        socketio.emit('game_state', game_state, room=room)
-    
+        if game_state["round"] == 3 and game_state["pending_orders"]:
+            orders_to_deliver = [order for order in game_state["pending_orders"] if order["arrival_time"] <= elapsed][
+                                :10]
+            if orders_to_deliver:
+                game_state["customer_orders"].extend(orders_to_deliver)
+                for order in orders_to_deliver:
+                    game_state["pending_orders"].remove(order)
+                    socketio.emit('new_order', order, room=room)
+                socketio.emit('game_state_update', {
+                    "customer_orders": game_state["customer_orders"],
+                    "pending_orders": game_state["pending_orders"]
+                }, room=room)
+                game_state["last_updated"] = current_time
     elif game_state["current_phase"] == "debrief" and game_state.get("debrief_start_time"):
         elapsed = current_time - game_state["debrief_start_time"]
         roundTimeRemaining = max(0, int(game_state["debrief_duration"] - elapsed))
-    # When debrief timer runs out, transition to waiting (or new round setup)
-        if roundTimeRemaining == 0:
-            game_state["current_phase"] = "waiting"
-            socketio.emit('game_state', game_state, room=room)
-    
+
     ovenTime = 0
     if game_state["oven_on"] and game_state["oven_timer_start"]:
         ovenTime = int(current_time - game_state["oven_timer_start"])
-    
+
     socketio.emit('time_response', {
-    "roundTimeRemaining": roundTimeRemaining,
-    "ovenTime": ovenTime,
-    "phase": game_state["current_phase"]
+        "roundTimeRemaining": roundTimeRemaining,
+        "ovenTime": ovenTime,
+        "phase": game_state["current_phase"]
     }, room=room)
 
 
