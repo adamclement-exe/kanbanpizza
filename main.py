@@ -487,20 +487,21 @@ def toggle_oven(data):
                 game_state["wasted_pizzas"].append(pizza)
             elif 30 <= total_baking <= 45:
                 pizza["status"] = "cooked"
-                game_state["completed_pizzas"].append(pizza)
                 status = "completed"
+                game_state["completed_pizzas"].append(pizza)
             else:
                 pizza["status"] = "burnt"
                 status = "incomplete"
                 game_state["wasted_pizzas"].append(pizza)
-        game_state["oven"] = []
-        game_state["oven_on"] = False
-        game_state["oven_timer_start"] = None
-        game_state["lead_times"].append({
+            game_state["lead_times"].append({
             "pizza_id": pizza["pizza_id"],
             "lead_time": lead_time,
             "status": status
-        })
+            })
+        game_state["oven"] = []
+        game_state["oven_on"] = False
+        game_state["oven_timer_start"] = None
+        
         game_state["last_updated"] = time.time()
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
     socketio.emit('game_state', game_state, room=room)
