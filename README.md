@@ -6,14 +6,16 @@ Play it live at: [kanbanpizza.onrender.com](https://kanbanpizza.onrender.com)
 - **Three Rounds**:  
   - **Round 1**: Individual pizza building with simple rules (e.g., 1 base, 1 sauce, 4 ham or 2 ham + 2 pineapple).  
   - **Round 2**: Collaborative building using shared pizza builders.  
-  - **Round 3**: Match 50 customer orders with varied ingredient combos, displayed as Kanban cards.
+  - **Round 3**: Match 15 customer orders with varied ingredient combos, displayed as Kanban cards.
+    
 - **Real-Time Gameplay**: SocketIO enables live updates for all players in a room.
-- **Kanban Cards**: In Round 3, orders appear as cards with ID, ingredients (e.g., 🟡x1 🔴x1 🥓x4), and a representative pizza emoji (e.g., 🍕🥓).
+    
 - **Scoring**: Points based on completed pizzas, fulfilled orders, with penalties for waste.
+  
 - **Lead Time Tracking & Debrief Charts**:  
   - Every ingredient is timestamped at production.
   - When a pizza is built, the earliest ingredient timestamp is used as its build start time; the pizza’s completion time is recorded and a lead time (completion minus start time) is calculated.
-  - During the debrief phase, a chart is displayed: a line chart showing each pizza's lead time.
+  - During the debrief phase, a chart is displayed; a line chart showing each pizza's lead time.
 
 # Kanban/Agile Principles
 
