@@ -380,7 +380,7 @@ def on_build_pizza(data):
             game_state["lead_times"].append({
                 "pizza_id": pizza["pizza_id"],
                 "lead_time": lead_time,
-                "status": "incompleted"
+                "status": "incomplete"
             })
             socketio.emit('build_error', {"message": "Invalid combo: Wasted as incomplete."}, room=request.sid)
         else:
