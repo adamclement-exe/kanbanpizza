@@ -81,6 +81,7 @@ def new_game_state(password=None):
         "customer_orders": [],
         "pending_orders": [],
         "last_updated": time.time(),
+        "lead_times": [],
         "password": password  # Add password to game state
     }
 
@@ -286,7 +287,7 @@ def on_prepare_ingredient(data):
         emit('error', {"message": "Invalid ingredient type"}, room=request.sid)
         return
     prepared_id = str(uuid.uuid4())[:8]
-    prepared_item = {"id": prepared_id, "type": ingredient_type, "prepared_by": room}
+    prepared_item = {"id": prepared_id, "type": ingredient_type, "prepared_by": room,"prepared_at": time.time()}
     game_state["prepared_ingredients"].append(prepared_item)
     game_state["last_updated"] = time.time()
     socketio.emit('ingredient_prepared', prepared_item, room=room)
@@ -303,18 +304,23 @@ def on_take_ingredient(data):
     if game_state["current_phase"] != "round":
         return
     ingredient_id = data.get("ingredient_id")
-    target_sid = data.get("target_sid")
+    target_sid = data.get("target_sid")  # None for Round 1 self-builder
+
     taken = next((ing for ing in game_state["prepared_ingredients"] if ing["id"] == ingredient_id), None)
     if taken:
         game_state["prepared_ingredients"].remove(taken)
-        if game_state["round"] > 1 and target_sid and target_sid in game_state["players"]:
-            game_state["players"][target_sid]["builder_ingredients"].append(taken)
+        # Use request.sid for Round 1, target_sid for Rounds 2+
+        sid_to_update = target_sid if (game_state["round"] > 1 and target_sid) else request.sid
+        if sid_to_update in game_state["players"]:
+            game_state["players"][sid_to_update]["builder_ingredients"].append(taken)  # Full item with prepared_at
+        else:
+            emit('error', {"message": "Player not found."}, room=request.sid)
+            return
         game_state["last_updated"] = time.time()
         socketio.emit('ingredient_removed', {"ingredient_id": ingredient_id}, room=room)
         socketio.emit('game_state', game_state, room=room)
     else:
         emit('error', {"message": "Ingredient not available."}, room=request.sid)
-
 
 @socketio.on('build_pizza')
 def on_build_pizza(data):
@@ -326,22 +332,22 @@ def on_build_pizza(data):
     if game_state["current_phase"] != "round":
         return
 
-    if "ingredients" in data:
-        builder_ingredients = data.get("ingredients", [])
+    # Determine which player's builder to use
+    if game_state["round"] == 1:
+        target_sid = request.sid  # Player building their own pizza
     else:
-        target_sid = data.get("player_sid", request.sid)
-        if target_sid not in game_state["players"]:
-            emit('build_error', {"message": "Target player not found."}, room=request.sid)
-            return
-        builder_ingredients = game_state["players"][target_sid]["builder_ingredients"]
-        if not builder_ingredients:
-            emit('build_error', {"message": "No ingredients in target builder."}, room=request.sid)
-            return
+        target_sid = data.get("player_sid", request.sid)  # Shared builder in Rounds 2+
 
-    if not builder_ingredients:
-        emit('build_error', {"message": "No ingredients provided."}, room=request.sid)
+    if target_sid not in game_state["players"]:
+        emit('build_error', {"message": "Target player not found."}, room=request.sid)
         return
 
+    builder_ingredients = game_state["players"][target_sid]["builder_ingredients"]
+    if not builder_ingredients:
+        emit('build_error', {"message": "No ingredients in builder."}, room=request.sid)
+        return
+
+    # Count ingredients and calculate earliest preparation time
     counts = {"base": 0, "sauce": 0, "ham": 0, "pineapple": 0}
     for ing in builder_ingredients:
         ing_type = ing.get("type", "")
@@ -349,24 +355,33 @@ def on_build_pizza(data):
             counts[ing_type] += 1
 
     pizza_id = str(uuid.uuid4())[:8]
+    earliest_time = min(ing["prepared_at"] for ing in builder_ingredients)
     pizza = {
         "pizza_id": pizza_id,
         "team": room,
         "built_at": time.time(),
         "baking_time": 0,
-        "ingredients": counts
+        "ingredients": counts,
+        "build_start_time": earliest_time
     }
 
+    # Pizza validation logic (unchanged)
     if game_state["round"] < 3:
         valid = counts["base"] == 1 and counts["sauce"] == 1 and (
                 (counts["ham"] == 4 and counts["pineapple"] == 0) or
                 (counts["ham"] == 2 and counts["pineapple"] == 2)
         )
         if not valid:
+            current_time = time.time()
+            lead_time = current_time - pizza["build_start_time"]
             pizza["status"] = "invalid"
-            pizza[
-                "emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🚫</span></div>'
+            pizza["emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">🚫</span></div>'
             game_state["wasted_pizzas"].append(pizza)
+            game_state["lead_times"].append({
+                "pizza_id": pizza["pizza_id"],
+                "lead_time": lead_time,
+                "status": "incompleted"
+            })
             socketio.emit('build_error', {"message": "Invalid combo: Wasted as incomplete."}, room=request.sid)
         else:
             pizza_type = "bacon" if counts["ham"] == 4 else "pineapple"
@@ -406,19 +421,17 @@ def on_build_pizza(data):
             socketio.emit('pizza_built', pizza, room=room)
         else:
             pizza["status"] = "unmatched"
-            pizza[
-                "emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">❓</span></div>'
+            pizza["emoji"] = '<div class="emoji-wrapper"><span class="emoji">🍕</span><span class="emoji">❓</span></div>'
             game_state["wasted_pizzas"].append(pizza)
             socketio.emit('build_error', {"message": "Pizza doesn't match any current order."}, room=request.sid)
 
-    if game_state["round"] > 1 and "ingredients" not in data:
-        target_sid = data.get("player_sid", request.sid)
-        game_state["players"][target_sid]["builder_ingredients"] = []
+    # Clear the builder
+    game_state["players"][target_sid]["builder_ingredients"] = []
+    if game_state["round"] > 1:
         socketio.emit('clear_shared_builder', {"player_sid": target_sid}, room=room)
 
     game_state["last_updated"] = time.time()
     socketio.emit('game_state', game_state, room=room)
-
 
 @socketio.on('move_to_oven')
 def on_move_to_oven(data):
@@ -452,6 +465,7 @@ def toggle_oven(data):
     update_player_activity(request.sid)
     room = player_group.get(request.sid, "default")
     game_state = group_games.get(room, new_game_state())
+    current_time = time.time()
     if game_state["current_phase"] != "round":
         return
     desired_state = data.get("state")
@@ -465,18 +479,28 @@ def toggle_oven(data):
         for pizza in game_state["oven"]:
             pizza["baking_time"] += elapsed
             total_baking = pizza["baking_time"]
+            pizza["completed_at"] = current_time
+            lead_time = current_time - pizza["build_start_time"]
             if total_baking < 30:
                 pizza["status"] = "undercooked"
+                status = "incomplete"
                 game_state["wasted_pizzas"].append(pizza)
             elif 30 <= total_baking <= 45:
                 pizza["status"] = "cooked"
                 game_state["completed_pizzas"].append(pizza)
+                status = "completed"
             else:
                 pizza["status"] = "burnt"
+                status = "incomplete"
                 game_state["wasted_pizzas"].append(pizza)
         game_state["oven"] = []
         game_state["oven_on"] = False
         game_state["oven_timer_start"] = None
+        game_state["lead_times"].append({
+            "pizza_id": pizza["pizza_id"],
+            "lead_time": lead_time,
+            "status": status
+        })
         game_state["last_updated"] = time.time()
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
     socketio.emit('game_state', game_state, room=room)
@@ -542,9 +566,9 @@ def generate_customer_orders(round_duration):
     ]
     orders = []
     max_order_time = round_duration - 45
-    for i in range(20):
+    for i in range(15):
         order = {"id": str(uuid.uuid4())[:8], **random.choice(order_types)}
-        order["arrival_time"] = (i * (max_order_time / 19))
+        order["arrival_time"] = (i * (max_order_time / 14))
         orders.append(order)
     return orders
 
@@ -584,7 +608,8 @@ def end_round(room):
         "wasted_pizzas_count": wasted_count,
         "unsold_pizzas_count": unsold_count,
         "ingredients_left_count": leftover_ingredients,
-        "score": score
+        "score": score,
+        "lead_times": game_state["lead_times"]
     }
     if game_state["round"] == 3:
         result["fulfilled_orders_count"] = fulfilled_orders
@@ -661,7 +686,7 @@ def search_engine_info():
             <p>- Use Shared Pizza Builders to collaborate.<br>
             - Same pizza rules and scoring as Round 1.</p>
             <h3>Round 3: Customer Orders</h3>
-            <p>- Match 20 customer orders (e.g., Plain: 1 Base, 1 Sauce; Heavy Ham: 1 Base, 1 Sauce, 6 Ham).<br>
+            <p>- Match 15 customer orders (e.g., Plain: 1 Base, 1 Sauce; Heavy Ham: 1 Base, 1 Sauce, 6 Ham).<br>
             - Scoring: +20 per fulfilled order, -10 per unmatched/wasted, -5 per unsold, -1 per leftover, -15 per unfulfilled order.</p>
             <p><em>Learn Agile principles like collaboration and continuous improvement!</em></p>
         """,
