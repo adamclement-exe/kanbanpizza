@@ -239,16 +239,27 @@ socket.on('join_error', function(data) {
       ev.dataTransfer.setData("ingredient_id", ev.target.getAttribute("data-id"));
       ev.dataTransfer.setData("ingredient_type", ev.target.dataset.type);
     }
-    function dropToBuilder(ev) {
-      ev.preventDefault();
-      var ingredient_id = ev.dataTransfer.getData("ingredient_id");
-      var ingredient_type = ev.dataTransfer.getData("ingredient_type");
-      socket.emit('take_ingredient', { ingredient_id: ingredient_id });
-      if (state.round === 1) {
-        builderIngredients.push({ id: ingredient_id, type: ingredient_type });
+function dropToBuilder(ev) {
+    ev.preventDefault();
+    var ingredient_id = ev.dataTransfer.getData("ingredient_id");
+    var ingredient_type = ev.dataTransfer.getData("ingredient_type");
+    socket.emit('take_ingredient', { ingredient_id: ingredient_id });
+    if (state.round === 1) {
+        builderIngredients.push({ id: ingredient_id, type: ingredient_type }); // Still for UI
         updateBuilderDisplay();
-      }
     }
+}
+
+document.getElementById("submit-pizza").addEventListener("click", function() {
+    if (state.round === 1 && builderIngredients.length === 0) {
+        alert("No ingredients selected for pizza!");
+        return;
+    }
+    socket.emit('build_pizza', {}); // No ingredients needed; server knows them
+    builderIngredients = []; // Clear local UI state
+    updateBuilderDisplay();
+});
+
     function dropToSharedBuilder(ev, sid) {
       ev.preventDefault();
       var ingredient_id = ev.dataTransfer.getData("ingredient_id");
@@ -315,15 +326,7 @@ socket.on('join_error', function(data) {
       });
     }
 
-    document.getElementById("submit-pizza").addEventListener("click", function() {
-      if (builderIngredients.length === 0) {
-        alert("No ingredients selected for pizza!");
-        return;
-      }
-      socket.emit('build_pizza', { ingredients: builderIngredients });
-      builderIngredients = [];
-      updateBuilderDisplay();
-    });
+
 
     if ('ontouchstart' in window) {
       var builderDiv = document.getElementById("pizza-builder");
@@ -349,7 +352,9 @@ socket.on('join_error', function(data) {
 
       const playerCount = Object.keys(state.players).length;
       updateRoomLabels(myRoom || "Unknown", playerCount);
-
+      if (state.lead_times) {
+            prepareChartData(state.lead_times);
+        }
       if (state.current_phase === "round") {
         document.getElementById("game-area").style.display = "block";
         document.getElementById("start-round").style.display = "none";
@@ -529,6 +534,9 @@ socket.on('join_error', function(data) {
       document.getElementById("debrief-pizzas-unsold").innerText = result.unsold_pizzas_count;
       document.getElementById("debrief-ingredients-left").innerText = result.ingredients_left_count || 0;
       document.getElementById("debrief-score").innerText = result.score;
+      if (result.lead_times) {
+        prepareChartData(result.lead_times);
+        }
       if (state.round === 3) {
         document.getElementById("fulfilled-orders").style.display = "block";
         document.getElementById("remaining-orders").style.display = "block";
@@ -661,3 +669,85 @@ socket.on('join_error', function(data) {
       roomModal.show();
       socket.emit('request_room_list');
     });
+
+
+let leadTimeChart;
+
+function prepareChartData(leadTimes) {
+    // Sort lead_times by completion time for chronological order
+    leadTimes.sort((a, b) => a.lead_time - b.lead_time);
+
+    // Prepare labels (pizza sequence)
+    const labels = leadTimes.map((_, index) => `Pizza ${index + 1}`);
+
+    // Prepare data for completed and incomplete pizzas
+    const completedData = leadTimes.map(lt => lt.status === "completed" ? lt.lead_time : null);
+    const incompleteData = leadTimes.map(lt => lt.status === "incomplete" ? lt.lead_time : null);
+
+    renderLeadTimeChart(labels, completedData, incompleteData);
+}
+
+function renderLeadTimeChart(labels, completedData, incompleteData) {
+    const ctx = document.getElementById('leadTimeChart').getContext('2d');
+
+    // Destroy existing chart if it exists
+    if (leadTimeChart) {
+        leadTimeChart.destroy();
+    }
+
+    // Create new chart with two datasets
+    leadTimeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Completed Pizzas',
+                    data: completedData,
+                    borderColor: 'rgba(75, 192, 75, 1)', // Green for completed
+                    backgroundColor: 'rgba(75, 192, 75, 0.2)',
+                    pointBackgroundColor: 'rgba(75, 192, 75, 1)',
+                    pointBorderColor: 'rgba(75, 192, 75, 1)',
+                    fill: false,
+                    spanGaps: true // Connects points even with null values
+                },
+                {
+                    label: 'Incomplete Pizzas',
+                    data: incompleteData,
+                    borderColor: 'rgba(255, 99, 132, 1)', // Red for incomplete
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                    pointBorderColor: 'rgba(255, 99, 132, 1)',
+                    fill: false,
+                    spanGaps: true
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Lead Time (Seconds)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Pizza Sequence'
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Lead Times for All Pizzas'
+                },
+                legend: {
+                    display: true // Show legend to distinguish completed vs incomplete
+                }
+            }
+        }
+    });
+}
