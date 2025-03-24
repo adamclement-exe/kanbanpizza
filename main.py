@@ -586,15 +586,45 @@ def end_round(room):
     game_state = group_games.get(room)
     if not game_state or game_state["current_phase"] != "round":
         return
+
+    current_time = time.time()
+
+    # Turn off the oven if still on and mark pizzas as burnt
+    if game_state["oven_on"]:
+        elapsed = time.time() - game_state["oven_timer_start"]
+        for pizza in game_state["oven"]:
+            pizza["baking_time"] += elapsed
+            pizza["completed_at"] = current_time
+            lead_time = current_time - pizza["build_start_time"]
+
+            
+            pizza["status"] = "undercooked"
+            game_state["wasted_pizzas"].append(pizza)
+
+            game_state["lead_times"].append({
+                "pizza_id": pizza["pizza_id"],
+                "lead_time": lead_time,
+                "status": "incomplete"
+            })
+
+        # Reset oven state
+        game_state["oven"] = []
+        game_state["oven_on"] = False
+        game_state["oven_timer_start"] = None
+        socketio.emit('oven_toggled', {"state": "off"}, room=room)
+
+    # Move to debrief phase
     game_state["current_phase"] = "debrief"
-    game_state["debrief_start_time"] = time.time()
+    game_state["debrief_start_time"] = current_time
+
     leftover_ingredients = len(game_state["prepared_ingredients"])
-    unsold_pizzas = game_state["built_pizzas"] + game_state["oven"]
+    unsold_pizzas = game_state["built_pizzas"]
     unsold_count = len(unsold_pizzas)
 
-    # Calculate score based on your scoring rules
+    # Calculate score based on scoring rules
     completed_count = len(game_state["completed_pizzas"])
     wasted_count = len(game_state["wasted_pizzas"])
+
     if game_state["round"] < 3:
         score = (completed_count * 10) - (wasted_count * 10) - (unsold_count * 5) - leftover_ingredients
     else:
@@ -621,7 +651,9 @@ def end_round(room):
     game_state["last_updated"] = time.time()
     socketio.emit('game_state', game_state, room=room)
     socketio.emit('round_ended', result, room=room)
+
     eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
+
 
 
 def debrief_timer(duration, room):
