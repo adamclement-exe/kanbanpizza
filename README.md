@@ -1,4 +1,4 @@
-![logo](https://raw.githubusercontent.com/adamclement-exe/kanbanpizza/326d4322bd2236181951d0e9289dceb2cac1b640/static/logo.svg){width=200px height=200px}
+
 # Kanban Pizza 🍕
 Kanban Pizza is a collaborative, multiplayer game that simulates a pizza-making workflow using Kanban principles. Built with Flask and SocketIO, it runs as a web application where players work together to prepare ingredients, build pizzas, and fulfill customer orders across three rounds of increasing complexity.  
 Play it live at: [kanbanpizza.onrender.com](https://kanbanpizza.onrender.com)
@@ -92,3 +92,4 @@ This project is deployed on Render. To deploy your own instance:
 
 ## License
 This project is open-source under the MIT License. Feel free to use, modify, and share!
+![logo](https://raw.githubusercontent.com/adamclement-exe/kanbanpizza/326d4322bd2236181951d0e9289dceb2cac1b640/static/logo.svg)
