@@ -62,8 +62,15 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/static/js/main.js" defer></script>
 <style>
+	  .logocat{
+	max-width:200px;
+  }
 	/* Modal adjustments for mobile */
 @media (max-width: 768px) {
+
+  .logocat{
+	max-width:60px;
+  }
   .modal-dialog {
     max-width: 95%;
     margin: 0 auto;
@@ -203,10 +210,10 @@ color:#CE0000;
 
         </a>
         <div class="modal-header">
-          <div class="col-md-2" style="margin-right:2vw;">
-            <img src="https://raw.githubusercontent.com/adamclement-exe/kanbanpizza/0203e3267910ce7ddc4dfa8c34d132895c654a8b/static/logo.svg" style="max-width:200px;"/>
+          <div class="col-md-1" style="margin-right:1vw;">
+            <img class="logocat" src="https://raw.githubusercontent.com/adamclement-exe/kanbanpizza/0203e3267910ce7ddc4dfa8c34d132895c654a8b/static/logo.svg" />
           </div>
-          <div class="col-md-4" style="margin-right:2vw;">
+          <div class="col-md-5" style="margin-right:1vw;">
             <h2 class="modal-title">
               Welcome to<br/>Kanban Pizza!</h2>
 		  <br/>
