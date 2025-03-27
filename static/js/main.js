@@ -674,18 +674,16 @@ document.getElementById("submit-pizza").addEventListener("click", function() {
 let leadTimeChart;
 
 function prepareChartData(leadTimes) {
-    // Sort lead_times by completion time for chronological order
-    leadTimes.sort((a, b) => a.lead_time - b.lead_time);
+    // Sort by actual build start time, ascending
+    leadTimes.sort((a, b) => a.start_time - b.start_time);
 
-    // Prepare labels (pizza sequence)
-    const labels = leadTimes.map((_, index) => `Pizza ${index + 1}`);
-
-    // Prepare data for completed and incomplete pizzas
+    const labels = leadTimes.map((lt, index) => `Pizza ${index + 1}`);
     const completedData = leadTimes.map(lt => lt.status === "completed" ? lt.lead_time : null);
     const incompleteData = leadTimes.map(lt => lt.status === "incomplete" ? lt.lead_time : null);
 
     renderLeadTimeChart(labels, completedData, incompleteData);
 }
+
 
 function renderLeadTimeChart(labels, completedData, incompleteData) {
     const ctx = document.getElementById('leadTimeChart').getContext('2d');
