@@ -710,7 +710,8 @@ def reset_round(room):
         game_state["round"] = 1  # Reset to Round 1 after Round 3
     game_state["debrief_start_time"] = None
     game_state["last_updated"] = time.time()
-    socketio.emit('game_reset', game_state, room=room)
+   socketio.emit('game_reset', sanitize_game_state_for_emit(game_state), room=room)
+
 
 
 # List of known search engine User-Agent substrings
