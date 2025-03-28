@@ -36,7 +36,9 @@ else:
 
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True
+}
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25)
 db = SQLAlchemy(app)
 
