@@ -105,16 +105,14 @@ def save_high_score(room, round_number, score):
 
 def get_high_scores():
     with app.app_context():
-        scores = HighScore.query.filter(HighScore.round_number.in_([1, 2, 3])).order_by(
-            HighScore.round_number, HighScore.ranking
-        ).all()
-
+        scores = HighScore.query.order_by(HighScore.round_number, HighScore.ranking).all()
         result = {1: {}, 2: {}, 3: {}}
         for score in scores:
+            timestamp_str = score.timestamp.strftime("%Y-%m-%d %H:%M:%S") if score.timestamp else "N/A"
             result[score.round_number][score.ranking] = {
                 "room_name": score.room_name,
                 "score": score.score,
-                "timestamp": score.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": timestamp_str
             }
         return result
 
@@ -166,7 +164,7 @@ def index():
 
 
 @socketio.on('connect')
-def on_connect():
+def on_connect(data):
     print(f"Client connected: {request.sid}")
     update_player_activity(request.sid)
     update_room_list()
