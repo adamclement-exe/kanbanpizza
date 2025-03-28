@@ -64,6 +64,12 @@ def download_db():
     return "Database download not supported in PostgreSQL environment.", 403
 
 
+def sanitize_game_state_for_emit(game_state):
+    clean_copy = dict(game_state)
+    clean_copy.pop("round_timer_thread", None)
+    clean_copy.pop("debrief_timer_thread", None)
+    return clean_copy
+
 def new_game_state(password=None):
     return {
         "players": {},
@@ -208,14 +214,14 @@ def on_join(data):
 
     game_state["last_updated"] = time.time()
     join_room(room)
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
     update_room_list()
     print(f"Client {request.sid} joined room {room}")
 
 
 @socketio.on('disconnect')
-def on_disconnect():
-    sid = request.sid
+def on_disconnect(sid):
+    #sid = request.sid
     room = player_group.get(sid)
     print(f"Client disconnected: {sid} from room {room}")
     if room and room in group_games:
@@ -225,7 +231,7 @@ def on_disconnect():
             game_state["last_updated"] = time.time()
         if sid in player_group:
             del player_group[sid]
-        socketio.emit('game_state', game_state, room=room)
+        socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
         if len(game_state["players"]) == 0:
             del group_games[room]
         update_room_list()
@@ -294,7 +300,7 @@ def on_prepare_ingredient(data):
     game_state["prepared_ingredients"].append(prepared_item)
     game_state["last_updated"] = time.time()
     socketio.emit('ingredient_prepared', prepared_item, room=room)
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
 
 
 @socketio.on('take_ingredient')
@@ -321,7 +327,7 @@ def on_take_ingredient(data):
             return
         game_state["last_updated"] = time.time()
         socketio.emit('ingredient_removed', {"ingredient_id": ingredient_id}, room=room)
-        socketio.emit('game_state', game_state, room=room)
+        socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
     else:
         emit('error', {"message": "Ingredient not available."}, room=request.sid)
 
@@ -435,7 +441,7 @@ def on_build_pizza(data):
         socketio.emit('clear_shared_builder', {"player_sid": target_sid}, room=room)
 
     game_state["last_updated"] = time.time()
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
 
 @socketio.on('move_to_oven')
 def on_move_to_oven(data):
@@ -459,7 +465,7 @@ def on_move_to_oven(data):
     game_state["oven"].append(pizza)
     game_state["last_updated"] = time.time()
     socketio.emit('pizza_moved_to_oven', pizza, room=room)
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
 
 
 @socketio.on('toggle_oven')
@@ -508,7 +514,7 @@ def toggle_oven(data):
         
         game_state["last_updated"] = time.time()
         socketio.emit('oven_toggled', {"state": "off"}, room=room)
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
 
 
 @socketio.on('request_room_list')
@@ -565,7 +571,7 @@ def on_start_round(data):
         game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
 
     # Notify clients
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
     socketio.emit('round_started', {
         "round": game_state["round"],
         "duration": game_state["round_duration"],
@@ -678,7 +684,7 @@ def end_round(room):
 
     save_high_score(room, game_state["round"], score)
     game_state["last_updated"] = time.time()
-    socketio.emit('game_state', game_state, room=room)
+    socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
     socketio.emit('round_ended', result, room=room)
 
     thread = eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
