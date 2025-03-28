@@ -85,7 +85,9 @@ def new_game_state(password=None):
         "pending_orders": [],
         "last_updated": time.time(),
         "lead_times": [],
-        "password": password  # Add password to game state
+        "password": password,
+        "round_timer_thread": None,  
+        "debrief_timer_thread": None  
     }
 
 
@@ -529,8 +531,20 @@ def on_start_round(data):
     update_player_activity(request.sid)
     room = player_group.get(request.sid, "default")
     game_state = group_games.get(room, new_game_state())
+
+    # Prevent starting a new round if not in the waiting phase
     if game_state["current_phase"] != "waiting":
         return
+
+    # Kill existing round timer if still running (cleanup from late starts)
+    if game_state.get("round_timer_thread"):
+        try:
+            game_state["round_timer_thread"].kill()
+        except Exception as e:
+            print(f"Could not kill previous round timer: {e}")
+        game_state["round_timer_thread"] = None
+
+    # Initialize round state
     game_state["current_phase"] = "round"
     game_state["round_start_time"] = time.time()
     game_state["prepared_ingredients"] = []
@@ -545,15 +559,22 @@ def on_start_round(data):
     for sid in game_state["players"]:
         game_state["players"][sid]["builder_ingredients"] = []
     game_state["last_updated"] = time.time()
+
+    # Generate customer orders for Round 3
     if game_state["round"] == 3:
         game_state["pending_orders"] = generate_customer_orders(game_state["round_duration"])
+
+    # Notify clients
     socketio.emit('game_state', game_state, room=room)
     socketio.emit('round_started', {
         "round": game_state["round"],
         "duration": game_state["round_duration"],
         "customer_orders": game_state["customer_orders"]
     }, room=room)
-    eventlet.spawn(round_timer, game_state["round_duration"], room)
+
+    # Start the round timer
+    thread = eventlet.spawn(round_timer, game_state["round_duration"], room)
+    game_state["round_timer_thread"] = thread
 
 
 def generate_customer_orders(round_duration):
@@ -599,7 +620,6 @@ def end_round(room):
             pizza["completed_at"] = current_time
             lead_time = current_time - pizza["build_start_time"]
 
-            
             pizza["status"] = "undercooked"
             game_state["wasted_pizzas"].append(pizza)
 
@@ -619,6 +639,13 @@ def end_round(room):
     game_state["current_phase"] = "debrief"
     game_state["debrief_start_time"] = current_time
 
+    # Kill previous debrief timer if it exists
+    if game_state.get("debrief_timer_thread"):
+        try:
+            game_state["debrief_timer_thread"].kill()
+        except Exception as e:
+            print(f"Could not kill previous debrief timer: {e}")
+
     leftover_ingredients = len(game_state["prepared_ingredients"])
     unsold_pizzas = game_state["built_pizzas"]
     unsold_count = len(unsold_pizzas)
@@ -634,7 +661,7 @@ def end_round(room):
         unmatched_count = sum(1 for pizza in game_state["completed_pizzas"] if "order_id" not in pizza)
         remaining_orders = len(game_state["customer_orders"])
         score = (fulfilled_orders * 20) - (unmatched_count * 10) - (wasted_count * 10) - (
-                    unsold_count * 5) - leftover_ingredients - (remaining_orders * 15)
+            unsold_count * 5) - leftover_ingredients - (remaining_orders * 15)
 
     result = {
         "completed_pizzas_count": completed_count,
@@ -654,7 +681,8 @@ def end_round(room):
     socketio.emit('game_state', game_state, room=room)
     socketio.emit('round_ended', result, room=room)
 
-    eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
+    thread = eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
+    game_state["debrief_timer_thread"] = thread
 
 
 
