@@ -27,10 +27,13 @@ shutdown_flag = False
 db_password = os.environ.get("dbpass")
 if db_password:
     app.config['SQLALCHEMY_DATABASE_URI'] = (
-        f'postgresql://pizzadb_qsvh_user:{db_password}@dpg-cvfjm3nnoe9s73bi9950-a/pizzadb_qsvh'
+        f'postgresql://neondb_owner:{db_password}@ep-misty-unit-a2gfnnq1-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require'
     )
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///high_scores.db'
+
+
+
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
