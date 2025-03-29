@@ -684,14 +684,14 @@ def end_round(room):
         result["remaining_orders_count"] = remaining_orders
         result["unmatched_pizzas_count"] = unmatched_count
 
-    save_high_score(room, game_state["round"], score)
+    
     game_state["last_updated"] = time.time()
     socketio.emit('game_state', sanitize_game_state_for_emit(game_state), room=room)
     socketio.emit('round_ended', result, room=room)
 
     thread = eventlet.spawn(debrief_timer, game_state["debrief_duration"], room)
     game_state["debrief_timer_thread"] = thread
-
+    save_high_score(room, game_state["round"], score)
 
 
 def debrief_timer(duration, room):
